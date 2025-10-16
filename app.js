@@ -1,5 +1,5 @@
-// ===== AthlētX HYROX Tracker – Mobile‑first =====
-
+// ===== AthlētX HYROX Tracker – Mobile-first (fix button handlers & globals) =====
+(() => {
 // Presets
 const PRESETS = {
   A:[
@@ -34,37 +34,38 @@ const workoutSel = $('#workoutSel');
 const tempoEl = $('#tempo');
 const tabTracker = $('#tab-tracker');
 const tabOverview = $('#tab-overview');
-const monthLabel = $('#monthLabel');
+const monthLabel = $('#monthLabel'); // existiert nur in der neueren, gebrandeten Version
 
 // Init
 dateEl.value = todayISO();
-renderTracker(); loadDay(); computeKPIs(); buildOverview(); drawChart();
+renderTracker(); onLoadDay(); computeKPIs(); buildOverview(); drawChart();
 bindTabs(); bindControls();
 
+// ---- Bindings
 function bindTabs(){
   document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     const tab = t.dataset.tab;
-    tabTracker.classList.toggle('hidden', tab!=='tracker');
-    tabOverview.classList.toggle('hidden', tab!=='overview');
+    if(tabTracker) tabTracker.style.display = tab==='tracker'?'block':'none';
+    if(tabOverview) tabOverview.style.display = tab==='overview'?'block':'none';
     if(tab==='overview'){ buildOverview(); drawChart(); }
   }));
 }
 
 function bindControls(){
-  $('#save').onclick = save;
-  $('#export').onclick = exportCSV;
-  $('#duplicate').onclick = duplicateNextDay;
-  $('#clear').onclick = clearDay;
-  dateEl.addEventListener('change', ()=>{ loadDay(); computeKPIs(); buildOverview(); });
-  workoutSel.addEventListener('change', ()=>{ renderTracker(); loadDay(); computeKPIs(); });
+  $('#save')?.addEventListener('click', onSave);
+  $('#export')?.addEventListener('click', onExportCSV);
+  $('#duplicate')?.addEventListener('click', onDuplicateNextDay);
+  $('#clear')?.addEventListener('click', onClearDay);
+  dateEl.addEventListener('change', ()=>{ onLoadDay(); computeKPIs(); buildOverview(); });
+  workoutSel.addEventListener('change', ()=>{ renderTracker(); onLoadDay(); computeKPIs(); });
   document.addEventListener('input', e=>{ if(e.target.matches('input,select')) computeKPIs(); });
-  $('#prevMonth').onclick = ()=>shiftMonth(-1);
-  $('#nextMonth').onclick = ()=>shiftMonth(1);
+  $('#prevMonth')?.addEventListener('click', ()=>shiftMonth(-1));
+  $('#nextMonth')?.addEventListener('click', ()=>shiftMonth(1));
 }
 
-// Tracker Rendering (per‑Satz Eingaben + Vorschläge)
+// ---- Tracker
 function renderTracker(){
   const def = PRESETS[workoutSel.value];
   let html='';
@@ -72,7 +73,7 @@ function renderTracker(){
     html += `<div class="card">
       <div class="exercise-head">
         <div class="pill">${idx+1}. ${ex.n}</div>
-        <button class="btn ghost" onclick="fillSuggestions(${idx})">Gewichtsvorschlag</button>
+        <button class="btn ghost" data-act="suggest" data-idx="${idx}">Gewichtsvorschlag</button>
       </div>
       <div class="setgrid" style="margin-top:8px">
         <div class="hdr">Satz</div>
@@ -96,6 +97,11 @@ function renderTracker(){
     html += `</div>`;
   });
   tabTracker.innerHTML = html;
+
+  // Delegate Suggest buttons
+  tabTracker.querySelectorAll('[data-act="suggest"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>fillSuggestions(+btn.dataset.idx));
+  });
 }
 
 function storageKey(){ return `hyrox:${workoutSel.value}:${dateEl.value}`; }
@@ -115,8 +121,9 @@ function collect(){
   return day;
 }
 
-function save(){ localStorage.setItem(storageKey(), JSON.stringify(collect())); computeKPIs(); toast('Gespeichert'); buildOverview(); }
-function loadDay(){
+// Renamed handlers to avoid id collisions
+function onSave(){ localStorage.setItem(storageKey(), JSON.stringify(collect())); computeKPIs(); toast('Gespeichert'); buildOverview(); }
+function onLoadDay(){
   renderTracker();
   const raw = localStorage.getItem(storageKey()); if(!raw){ computeKPIs(); return; }
   const d = JSON.parse(raw); tempoEl.value=d.tempo||tempoEl.value;
@@ -131,18 +138,16 @@ function loadDay(){
   });
   computeKPIs();
 }
-
-function duplicateNextDay(){
+function onDuplicateNextDay(){
   const d = new Date(dateEl.value||todayISO()); d.setDate(d.getDate()+1);
   const next = d.toISOString().slice(0,10);
   const currentData = collect(); currentData.date = next;
   localStorage.setItem(`hyrox:${workoutSel.value}:${next}`, JSON.stringify(currentData));
-  dateEl.value = next; loadDay(); toast('Auf nächsten Tag dupliziert');
+  dateEl.value = next; onLoadDay(); toast('Auf nächsten Tag dupliziert');
 }
+function onClearDay(){ localStorage.removeItem(storageKey()); renderTracker(); computeKPIs(); toast('Eintrag gelöscht'); buildOverview(); }
 
-function clearDay(){ localStorage.removeItem(storageKey()); renderTracker(); computeKPIs(); toast('Eintrag gelöscht'); buildOverview(); }
-
-// KPIs inkl. grobe Effective‑Reps‑Schätzung
+// KPIs inkl. grobe Effective-Reps-Schätzung
 function computeKPIs(){
   const d = collect(); let vol=0, sets=0, eff=0, rpeSum=0, rpeN=0;
   d.rows.forEach(r=>{
@@ -195,11 +200,11 @@ function fillSuggestions(idx){
   toast('Vorschläge eingefügt');
 }
 
-// Übersicht
+// Übersicht (Kalender & Chart) – identisch wie zuvor
 let calYear, calMonth;
 function buildOverview(){
-  const ref = new Date(dateEl.value||todayISO());
-  calYear = ref.getFullYear(); calMonth = ref.getMonth();
+  const now = new Date(dateEl.value||todayISO());
+  calYear = now.getFullYear(); calMonth = now.getMonth();
   renderCalendar(calYear, calMonth);
   buildExerciseOptions();
 }
@@ -211,9 +216,10 @@ function shiftMonth(delta){
   drawChart();
 }
 function renderCalendar(y,m){
-  const cal = $('#calendar'); cal.innerHTML='';
+  const cal = $('#calendar'); if(!cal) return;
+  cal.innerHTML='';
   const monthNames = ['Jan','Feb','Mrz','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  monthLabel.textContent = monthNames[m]+' '+y;
+  if(monthLabel) monthLabel.textContent = monthNames[m]+' '+y;
   const first = new Date(y,m,1); const startW=(first.getDay()+6)%7; // Mo=0
   const days = new Date(y,m+1,0).getDate();
   for(let i=0;i<startW;i++){ const p=document.createElement('div'); p.className='day'; p.style.opacity=.35; cal.appendChild(p); }
@@ -222,28 +228,25 @@ function renderCalendar(y,m){
     const has = Object.keys(localStorage).some(k=>k.includes(':'+iso));
     const el = document.createElement('div'); el.className='day'+(has?' has':''); el.textContent=d;
     if(iso===dateEl.value) el.classList.add('active');
-    el.onclick = ()=>{ dateEl.value=iso; loadDay(); computeKPIs(); drawChart(); document.querySelectorAll('.day').forEach(x=>x.classList.remove('active')); el.classList.add('active'); };
+    el.onclick = ()=>{ dateEl.value=iso; onLoadDay(); computeKPIs(); drawChart(); document.querySelectorAll('.day').forEach(x=>x.classList.remove('active')); el.classList.add('active'); };
     cal.appendChild(el);
   }
 }
 function buildExerciseOptions(){
-  const exSel = $('#exSelect'); const names=new Set();
-  Object.values(PRESETS).flat().forEach(x=>names.add(x.n));
+  const exSel = $('#exSelect'); if(!exSel) return;
+  const names=new Set(); Object.values(PRESETS).flat().forEach(x=>names.add(x.n));
   exSel.innerHTML = [...names].map(n=>`<option>${n}</option>`).join('');
   exSel.onchange = drawChart;
 }
 function drawChart(){
-  const ex = $('#exSelect').value;
-  const c = $('#chart'); const ctx = c.getContext('2d');
+  const c = $('#chart'); if(!c) return;
+  const exSel = $('#exSelect'); const ex = exSel?.value;
+  const ctx = c.getContext('2d');
   ctx.clearRect(0,0,c.width,c.height);
+  if(!ex){ ctx.fillStyle='#94a3b8'; ctx.fillText('Keine Daten.', 20, 20); return; }
   const hist = lastHistoryFor(ex);
   const xs = hist.map(h=>h.date); const ys = hist.map(h=>h.w);
-  // Generate suggestions line from history (+2.5% if last RPE<=8 else hold / -2.5% if >9)
-  const sugg = hist.map(h=>{
-    if(h.rpe<=8) return Math.round(h.w*1.025*2)/2;
-    if(h.rpe>9) return Math.round(h.w*0.975*2)/2;
-    return h.w;
-  });
+  const sugg = hist.map(h=> (h.rpe<=8? Math.round(h.w*1.025*2)/2 : (h.rpe>9? Math.round(h.w*0.975*2)/2 : h.w)) );
   const pad={l:42,r:10,t:10,b:28}, w=c.width-pad.l-pad.r, h=c.height-pad.t-pad.b;
   ctx.fillStyle='#94a3b8'; ctx.font='12px system-ui';
   if(ys.length===0){ ctx.fillText('Keine Daten vorhanden.', pad.l, pad.t+20); return; }
@@ -267,7 +270,7 @@ function drawChart(){
 }
 
 // CSV export
-function exportCSV(){
+function onExportCSV(){
   const keys = Object.keys(localStorage).filter(k=>k.startsWith('hyrox:')).sort();
   const rows = ["Datum;Workout;Tempo;Übung;Satz;Gewicht;Wdh.;RPE;Notiz"];
   keys.forEach(k=>{
@@ -287,3 +290,5 @@ function toast(msg){
   const f=document.createElement('div'); f.className='flash'; f.textContent=msg; document.body.appendChild(f);
   setTimeout(()=>f.remove(), 1400);
 }
+
+})(); // end IIFE
