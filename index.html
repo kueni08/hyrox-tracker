@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AthlētX – HYROX Trainings‑Tracker (A/B)</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f1520">
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="appbar">
+      <div class="brand">
+        <div class="logo">A<span>thlēt</span>X</div>
+        <div class="tag">HYROX Trainings‑Tracker • Mobile Swipe • PWA</div>
+      </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="tracker">Training</button>
+        <button class="tab" data-tab="overview">Übersicht</button>
+      </nav>
+      <div class="top-actions">
+        <button id="timerBtn" class="btn timer" title="Timer starten/neu starten">⏱ 00:00</button>
+        <button id="themeToggle" class="btn theme" title="Theme wechseln">🌙</button>
+      </div>
+    </header>
+
+    <section class="controls panel">
+      <label class="chip">Datum
+        <input type="date" id="date" />
+      </label>
+      <label class="chip">Workout
+        <select id="workoutSel">
+          <option value="A">Training A</option>
+          <option value="B">Training B</option>
+        </select>
+      </label>
+      <div class="spacer"></div>
+      <div class="btnrow">
+        <button id="save" class="btn">Speichern</button>
+        <button id="export" class="btn ghost">Export CSV</button>
+        <button id="clear" class="btn danger">Löschen</button>
+      </div>
+    </section>
+
+    <!-- TRAINING TAB (horizontal swipe) -->
+    <section id="tab-tracker" class="panel swipe-wrap"></section>
+
+    <!-- OVERVIEW TAB -->
+    <section id="tab-overview" class="panel hidden">
+      <div class="overview">
+        <div class="calendar-card">
+          <div class="calendar-head">
+            <button class="icon" id="prevMonth" aria-label="Vormonat">◀</button>
+            <div class="month" id="monthLabel">Monat YYYY</div>
+            <button class="icon" id="nextMonth" aria-label="Nächster Monat">▶</button>
+          </div>
+          <div class="calendar-grid" id="calendar"></div>
+
+          <div class="recap">
+            <div class="recap-card" id="recap-week">
+              <div class="recap-title">Woche</div>
+              <div class="recap-kpis">
+                <div><span id="wkWorkouts">0</span><small>Workouts</small></div>
+                <div><span id="wkVolume">0</span><small>kg Volumen</small></div>
+                <div><span id="wkAvgRPE">0.0</span><small>Ø RPE</small></div>
+              </div>
+              <div class="delta" id="wkDelta">–</div>
+            </div>
+            <div class="recap-card" id="recap-month">
+              <div class="recap-title">Monat</div>
+              <div class="recap-kpis">
+                <div><span id="moWorkouts">0</span><small>Workouts</small></div>
+                <div><span id="moVolume">0</span><small>kg Volumen</small></div>
+                <div><span id="moAvgRPE">0.0</span><small>Ø RPE</small></div>
+              </div>
+              <div class="delta" id="moDelta">–</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <label class="chip">Übungen
+              <select id="exSelect" multiple size="6"></select>
+            </label>
+            <div class="legend" id="legend"></div>
+          </div>
+          <canvas id="chart" width="900" height="320"></canvas>
+          <div class="hint">Mehrfachauswahl: Tippe mehrere Übungen an (Desktop: Strg/Cmd).</div>
+          <div class="aggregate">
+            <div class="agg-item"><b>Gesamt‑Fortschritt</b>: <span id="aggScore">–</span></div>
+            <div class="agg-item hint">Berechnet aus linearem Trend der Top‑Satz‑Gewichte (Ø aller ausgewählten Übungen, letzte 6 Wochen).</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>Defaults satzgenau vom letzten Mal, sonst konservativer Vorschlag. Autosave 3 Min. • Installierbar (PWA).</div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      });
+    }
+  </script>
+</body>
+</html>
