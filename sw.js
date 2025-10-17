@@ -1,5 +1,5 @@
-// Simple PWA cache-first SW (v1)
-const CACHE = 'athletx-v1';
+// Simple PWA cache-first SW (v2)
+const CACHE = 'athletx-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,7 +10,7 @@ const ASSETS = [
   './manifest.webmanifest'
 ];
 self.addEventListener('install', e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS.map(asset=> new Request(asset, {cache:'reload'})))));
   self.skipWaiting();
 });
 self.addEventListener('activate', e=>{
