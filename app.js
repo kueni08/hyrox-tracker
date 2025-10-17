@@ -206,10 +206,9 @@ function renderTracker(){
       </div>
       <div class="setgrid hdr">
         <div class="hdr">Satz</div>
-        <div class="hdr">Gewicht</div>
+        <div class="hdr">Gewicht / Vorschlag</div>
         <div class="hdr">Wdh.</div>
         <div class="hdr">RPE</div>
-        <div class="hdr">Vorschlag</div>
       </div>`;
     for(let s=0;s<setCount;s++){
       const lastW = last?.[s]?.w ?? 0;
@@ -218,10 +217,12 @@ function renderTracker(){
       const sugg = last ? lastW : lastTopSet(ex.n);
       html += `<div class="setgrid" data-idx="${idx}" data-set="${s}">
         <div>${s+1}</div>
-        <div><input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}"></div>
+        <div class="weight-wrap">
+          <input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}">
+          <input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly>
+        </div>
         <div><input type="number" step="1" data-k="reps" value="${lastR||0}"></div>
         <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${lastRPE||''}"></div>
-        <div><input type="text" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
       </div>`;
     }
     html += `</div>`;
@@ -252,10 +253,12 @@ function addSetRow(idx){
   const row = document.createElement('div');
   row.className='setgrid'; row.dataset.idx=idx; row.dataset.set=s;
   row.innerHTML = `<div>${s+1}</div>
-    <div><input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}"></div>
+    <div class="weight-wrap">
+      <input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}">
+      <input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly>
+    </div>
     <div><input type="number" step="1" data-k="reps" value="${lastR||0}"></div>
-    <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${lastRPE||''}"></div>
-    <div><input type="text" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>`;
+    <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${lastRPE||''}"></div>`;
   card.appendChild(row);
 }
 function removeLastSet(idx){
