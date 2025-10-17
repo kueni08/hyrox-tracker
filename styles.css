@@ -59,26 +59,24 @@ body{margin:0;background:linear-gradient(180deg,var(--bg) 0%, var(--surface) 100
 .pill{display:inline-flex; align-items:center; gap:8px; background:color-mix(in oklab, var(--surface) 90%, #000 10%); border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:12px; color:var(--muted)}
 
 /* Compact grid */
-.setgrid{display:grid; grid-template-columns:48px minmax(0, 1fr) 68px 60px; gap:8px; align-items:center; margin-top:8px}
-.setgrid .hdr{color:var(--muted); font-size:12px}
-.weight-wrap{display:flex; gap:6px; align-items:center}
-.weight-wrap input[type=number]{flex:1 1 auto; min-width:0}
-.weight-wrap .suggestion{flex:0 0 64px; text-align:center; font-size:12px; color:var(--muted)}
-.weight-wrap .suggestion[readonly]{border-style:dashed; background:color-mix(in oklab, var(--surface) 92%, #000 8%)}
+.setgrid{display:grid; grid-template-columns:40px repeat(4, minmax(60px, 1fr)); gap:8px; align-items:center; margin-top:8px}
+.setgrid.hdr{margin-top:0}
+.setgrid .hdr{color:var(--muted); font-size:12px; text-align:center}
+.setgrid > div:first-child{text-align:center; font-weight:600}
+.setgrid .suggestion{text-align:center; font-size:12px; color:var(--muted); white-space:nowrap}
+.setgrid .suggestion[readonly]{border-style:dashed; background:color-mix(in oklab, var(--surface) 92%, #000 8%)}
 input{width:100%; background:color-mix(in oklab, var(--surface) 90%, #000 10%); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:6px 8px; min-width:0}
-input[type=number]{appearance:textfield}
+input[type=number]{appearance:textfield; text-align:center}
 @media (max-width:480px){
   .exercise-head{flex-direction:column; align-items:flex-start}
   .exercise-head .btnrow{width:100%}
-  .setgrid{grid-template-columns:40px minmax(0,1fr); grid-auto-rows:auto}
-  .setgrid.hdr{grid-template-columns:40px minmax(0,1fr)}
-  .setgrid > div:nth-child(3),
-  .setgrid > div:nth-child(4){grid-column:2; display:flex; align-items:center; margin-top:4px; width:100%}
-  .setgrid > div:nth-child(4){justify-content:flex-start}
-  .weight-wrap{width:100%}
-  .weight-wrap .suggestion{flex:0 0 60px; font-size:11px}
+  .setgrid{grid-template-columns:32px repeat(4, minmax(52px,1fr)); gap:6px}
+  .setgrid.hdr{grid-template-columns:32px repeat(4, minmax(52px,1fr))}
+  .setgrid .hdr{font-size:11px}
+  .setgrid > div:first-child{font-size:13px}
   .btn{padding:8px 10px; font-size:14px}
   input{padding:6px 6px; font-size:14px}
+  .setgrid .suggestion{font-size:11px}
 }
 
 /* Overview */
