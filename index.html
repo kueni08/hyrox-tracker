@@ -15,7 +15,7 @@
     <header class="appbar">
       <div class="brand">
         <div class="logo">A<span>thlēt</span>X</div>
-        <div class="tag">HYROX Trainings‑Tracker • Mobile Swipe • PWA</div>
+        <div class="tag">HYROX Trainings‑Tracker • Mobile optimiert • PWA</div>
       </div>
       <nav class="tabs" id="tabs">
         <button class="tab active" data-tab="tracker">Training</button>
@@ -23,7 +23,6 @@
       </nav>
       <div class="top-actions">
         <button id="timerBtn" class="btn timer" title="Timer starten/neu starten">⏱ 00:00</button>
-        <button id="themeToggle" class="btn theme" title="Theme wechseln">🌙</button>
       </div>
     </header>
 
@@ -43,10 +42,11 @@
         <button id="export" class="btn ghost">Export CSV</button>
         <button id="clear" class="btn danger">Löschen</button>
       </div>
+      <button id="themeToggle" class="btn theme" title="Theme wechseln">🌙</button>
     </section>
 
-    <!-- TRAINING TAB (horizontal swipe) -->
-    <section id="tab-tracker" class="panel swipe-wrap"></section>
+    <!-- TRAINING TAB (vertical scroll) -->
+    <section id="tab-tracker" class="panel tracker-list"></section>
 
     <!-- OVERVIEW TAB -->
     <section id="tab-overview" class="panel hidden">
