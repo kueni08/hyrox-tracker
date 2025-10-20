@@ -285,11 +285,7 @@ function renderExerciseLibrary(){
     (data?.rows||[]).forEach(row=>{ if(row?.name) names.add(row.name); });
   });
   const sorted=[...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'de',{sensitivity:'base'}));
-  exerciseLibraryOptions = sorted;
   exerciseLibraryEl.innerHTML = sorted.map(name=>`<option value="${escapeHtml(name)}"></option>`).join('');
-  if(exercisePickerActiveInput){
-    refreshExercisePicker(exercisePickerActiveInput.value||'');
-  }
 }
 
 function saveWorkoutsState(){
@@ -315,7 +311,6 @@ function reloadWorkoutsFromStorage(){
 
 function renderWorkoutManager(){
   if(!workoutManager) return;
-  closeExercisePicker();
   if(!workoutsState.order?.length){
     workoutManager.innerHTML = '<div class="activities-empty">Noch keine Workouts angelegt.</div>';
     return;
@@ -359,149 +354,11 @@ function renderWorkoutManager(){
   }).join('');
 }
 
-const EXERCISE_INPUT_SELECTOR = 'input[list="exerciseLibrary"]';
-
-function ensureExercisePicker(){
-  if(exercisePickerEl) return;
-  exercisePickerEl = document.createElement('div');
-  exercisePickerEl.className = 'exercise-suggestions';
-  exercisePickerEl.addEventListener('mousedown', evt=>{
-    const item = evt.target.closest('[data-value]');
-    if(!item) return;
-    evt.preventDefault();
-    selectExercisePickerValue(item.dataset.value||'');
-  });
-  exercisePickerEl.addEventListener('mousemove', evt=>{
-    const item = evt.target.closest('[data-value]');
-    if(!item) return;
-    const idx = parseInt(item.dataset.index,10);
-    if(!isNaN(idx)){ updateExercisePickerHighlight(idx); }
-  });
-  document.body.appendChild(exercisePickerEl);
-  window.addEventListener('resize', positionExercisePicker, {passive:true});
-  window.addEventListener('scroll', positionExercisePicker, {passive:true, capture:true});
-  document.addEventListener('pointerdown', evt=>{
-    if(!exercisePickerVisible) return;
-    if(exercisePickerEl.contains(evt.target)) return;
-    if(exercisePickerActiveInput && exercisePickerActiveInput.contains?.(evt.target)) return;
-    if(evt.target===exercisePickerActiveInput) return;
-    closeExercisePicker();
-  });
-}
-
-function bindExerciseInputs(root){
-  if(!root || root.dataset.exercisePickerBound) return;
-  root.dataset.exercisePickerBound = '1';
-  root.addEventListener('focusin', evt=>{
-    const input = evt.target;
-    if(!(input instanceof HTMLInputElement)) return;
-    if(!input.matches(EXERCISE_INPUT_SELECTOR)) return;
-    openExercisePicker(input);
-  });
-  root.addEventListener('input', evt=>{
-    if(evt.target===exercisePickerActiveInput){
-      refreshExercisePicker(exercisePickerActiveInput.value||'');
-    }
-  });
-  root.addEventListener('keydown', evt=>{
-    if(evt.target!==exercisePickerActiveInput) return;
-    if(evt.key==='ArrowDown'){ evt.preventDefault(); updateExercisePickerHighlight(exercisePickerHighlight+1); }
-    else if(evt.key==='ArrowUp'){ evt.preventDefault(); updateExercisePickerHighlight(exercisePickerHighlight-1); }
-    else if(evt.key==='Enter'){ if(exercisePickerHighlight>=0){ evt.preventDefault(); selectExercisePickerValue(exercisePickerFiltered[exercisePickerHighlight]); } }
-    else if(evt.key==='Escape'){ closeExercisePicker(); }
-  });
-  root.addEventListener('focusout', evt=>{
-    if(evt.target!==exercisePickerActiveInput) return;
-    scheduleExercisePickerClose();
-  });
-}
-
-function scheduleExercisePickerClose(){
-  if(exercisePickerCloseTimer){ clearTimeout(exercisePickerCloseTimer); }
-  exercisePickerCloseTimer = setTimeout(()=>{ closeExercisePicker(); }, 120);
-}
-
-function cancelExercisePickerClose(){
-  if(exercisePickerCloseTimer){
-    clearTimeout(exercisePickerCloseTimer);
-    exercisePickerCloseTimer=null;
-  }
-}
-
-function openExercisePicker(input){
-  ensureExercisePicker();
-  cancelExercisePickerClose();
-  exercisePickerActiveInput = input;
-  refreshExercisePicker(input.value||'');
-  positionExercisePicker();
-  exercisePickerVisible = true;
-  exercisePickerEl.classList.add('visible');
-}
-
-function closeExercisePicker(){
-  cancelExercisePickerClose();
-  exercisePickerVisible = false;
-  exercisePickerActiveInput = null;
-  exercisePickerFiltered = [];
-  exercisePickerHighlight = -1;
-  if(exercisePickerEl){ exercisePickerEl.classList.remove('visible'); }
-}
-
-function positionExercisePicker(){
-  if(!exercisePickerVisible || !exercisePickerActiveInput || !exercisePickerEl) return;
-  const rect = exercisePickerActiveInput.getBoundingClientRect();
-  const width = Math.max(rect.width, 200);
-  exercisePickerEl.style.minWidth = width+'px';
-  exercisePickerEl.style.width = width+'px';
-  const scrollY = window.scrollY ?? window.pageYOffset ?? 0;
-  const scrollX = window.scrollX ?? window.pageXOffset ?? 0;
-  exercisePickerEl.style.top = `${scrollY + rect.bottom + 4}px`;
-  exercisePickerEl.style.left = `${scrollX + rect.left}px`;
-}
-
-function refreshExercisePicker(filter){
-  if(!exercisePickerEl) return;
-  cancelExercisePickerClose();
-  const term = String(filter||'').trim().toLowerCase();
-  const list = exerciseLibraryOptions.filter(name=>{
-    if(!term) return true;
-    return name.toLowerCase().includes(term);
-  }).slice(0, 60);
-  exercisePickerFiltered = list;
-  exercisePickerHighlight = list.length ? 0 : -1;
-  const html = list.length ? list.map((name, idx)=>{
-    return `<button type="button" class="exercise-suggestion${idx===exercisePickerHighlight?' active':''}" data-value="${escapeHtml(name)}" data-index="${idx}">${escapeHtml(name)}</button>`;
-  }).join('') : `<div class="exercise-suggestion empty">${term ? 'Keine Treffer – Enter speichert neue Übung' : 'Keine Übungen vorhanden'}</div>`;
-  exercisePickerEl.innerHTML = html;
-  positionExercisePicker();
-}
-
-function updateExercisePickerHighlight(next){
-  if(!exercisePickerFiltered.length){ exercisePickerHighlight = -1; return; }
-  if(next<0) next = exercisePickerFiltered.length-1;
-  if(next>=exercisePickerFiltered.length) next = 0;
-  exercisePickerHighlight = next;
-  [...exercisePickerEl.querySelectorAll('[data-index]')].forEach(btn=>{
-    const idx = parseInt(btn.dataset.index,10);
-    if(isNaN(idx)) return;
-    if(idx===exercisePickerHighlight) btn.classList.add('active'); else btn.classList.remove('active');
-  });
-}
-
-function selectExercisePickerValue(value){
-  if(!exercisePickerActiveInput) return;
-  exercisePickerActiveInput.value = value;
-  const event = new Event('change', {bubbles:true});
-  exercisePickerActiveInput.dispatchEvent(event);
-  closeExercisePicker();
-}
-
 function setupWorkoutManagerEvents(){
   if(!workoutManager || workoutManager.dataset.bound) return;
   workoutManager.dataset.bound='1';
   workoutManager.addEventListener('change', onWorkoutManagerChange);
   workoutManager.addEventListener('click', onWorkoutManagerClick);
-  bindExerciseInputs(workoutManager);
 }
 
 function onWorkoutManagerChange(evt){
@@ -1379,23 +1236,9 @@ function buildOverview(){
     (workoutsState.order||[]).forEach(id=>{
       getWorkoutExercises(id).forEach(x=>names.add(x.name));
     });
-    sessionEntries().forEach(({data})=>{
-      (data?.rows||[]).forEach(row=>{ if(row?.name) names.add(row.name); });
-    });
-    const arr=[...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'de',{sensitivity:'base'}));
-    const previous = new Set(statSelectedExercises);
+    const arr=[...names];
     exSel.innerHTML = arr.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
-    let nextSelected = arr.filter(n=>previous.has(n));
-    if(!nextSelected.length && arr.length){
-      nextSelected = arr.slice(0, Math.min(3, arr.length));
-    }
-    statSelectedExercises = new Set(nextSelected);
-    [...exSel.options].forEach(opt=>{ opt.selected = statSelectedExercises.has(opt.value); });
-    exSel.onchange = ()=>{
-      statSelectedExercises = new Set([...exSel.selectedOptions].map(o=>o.value));
-      drawChart();
-    };
-    drawChart();
+    exSel.onchange = ()=>{ drawChart(); };
   }
 
   // Recaps
@@ -1527,12 +1370,10 @@ function closeActivityDetail(){
   activityDetail.classList.add('hidden');
   activeDetailKey = null;
   activeDetailState = null;
-  closeExercisePicker();
 }
 
 function renderActivityDetail(){
   if(!activityDetailBody) return;
-  closeExercisePicker();
   if(!activeDetailState){
     activityDetailBody.innerHTML = '<div class="detail-empty">Kein Training ausgewählt.</div>';
     return;
@@ -1587,7 +1428,6 @@ function setupActivityDetailEvents(){
   activityDetailBody.dataset.bound='1';
   activityDetailBody.addEventListener('change', onActivityDetailChange);
   activityDetailBody.addEventListener('click', onActivityDetailClick);
-  bindExerciseInputs(activityDetailBody);
 }
 
 function onActivityDetailChange(evt){

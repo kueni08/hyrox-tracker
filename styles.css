@@ -198,14 +198,6 @@ input[type=number]{appearance:textfield; text-align:center}
 .workout-header{display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between}
 .workout-header .title{display:flex; flex-direction:column; gap:4px; min-width:160px}
 .workout-header input{font-weight:800; text-transform:uppercase}
-.exercise-suggestions{position:absolute; z-index:2000; background:var(--card); border:1px solid var(--border); border-radius:12px;
-  padding:4px; box-shadow:var(--shadow); max-height:240px; overflow-y:auto; display:none; min-width:200px;}
-.exercise-suggestions.visible{display:block;}
-.exercise-suggestion{width:100%; text-align:left; border:none; background:transparent; color:var(--text); padding:8px 10px;
-  border-radius:8px; cursor:pointer; font:inherit; display:block;}
-.exercise-suggestion:hover,.exercise-suggestion.active{background:color-mix(in oklab, var(--accent) 20%, var(--surface) 80%);
-  color:#081018; font-weight:700;}
-.exercise-suggestion.empty{padding:10px; color:var(--muted); cursor:default;}
 .workout-meta{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
 .workout-exercises{display:flex; flex-direction:column; gap:8px}
 .workout-exercise{display:grid; grid-template-columns:1fr repeat(4, minmax(60px, 90px)) auto; gap:6px; align-items:center}
