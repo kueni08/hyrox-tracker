@@ -51,7 +51,16 @@ const syncRefreshBtn = $('#syncRefresh');
 const STORAGE_PREFIX = 'hyrox:';
 const SYNC_ID_KEY = 'athletx:sync:id';
 const SYNC_CACHE_KEY = 'athletx:sync:cache';
-const SYNC_BASE_URL = 'https://api.npoint.io/';
+
+// ===== JSONBin Konfiguration (statt npoint) =====
+// 1) JSONBin.io → Dashboard → API Keys → Master-Key kopieren (Klartext, KEIN $2a$… Hash)
+// 2) Unten einfügen:
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+const JSONBIN_KEY  = '68f5efa3ae596e708f1eb4b0'; // <<< deinen echten Key einsetzen
+const BIN_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Master-Key': JSONBIN_KEY,
+};
 
 let syncId = localStorage.getItem(SYNC_ID_KEY) || '';
 let remoteData = loadCachedRemoteData();
@@ -94,7 +103,6 @@ async function boot(){
   drawChart();
   renderActivities();
 }
-
 boot();
 
 // Tabs
@@ -310,7 +318,7 @@ function snapshotFingerprint(data){
 
 async function initSync(){
   updateSyncCodeDisplay();
-  updateSyncStatus('Initialisiere Sync …','pending');
+  updateSyncStatus('Initialisiere Sync …','pending');
   try{
     remoteData = mergeSnapshots(remoteData, localSessionSnapshot());
     persistRemoteCache();
@@ -347,7 +355,7 @@ async function refreshRemoteSnapshot(silent){
     if(!silent) updateSyncStatus('Kein Sync-Code vorhanden','warning');
     return;
   }
-  if(!silent) updateSyncStatus('Aktualisiere aus der Cloud …','pending');
+  if(!silent) updateSyncStatus('Aktualisiere aus der Cloud …','pending');
   try{
     const remoteSnap = await fetchRemoteSnapshot(syncId);
     const incoming = sanitizeSnapshot(remoteSnap);
@@ -381,7 +389,7 @@ async function connectToSyncCode(code){
     updateSyncStatus('Bitte gültigen Sync-Code eingeben','warning');
     return;
   }
-  updateSyncStatus('Verbinde …','pending');
+  updateSyncStatus('Verbinde …','pending');
   try{
     const remoteSnap = await fetchRemoteSnapshot(trimmed);
     syncId = trimmed;
@@ -411,7 +419,7 @@ async function connectToSyncCode(code){
 }
 
 async function createNewSyncCode(){
-  updateSyncStatus('Erstelle neuen Sync-Code …','pending');
+  updateSyncStatus('Erstelle neuen Sync-Code …','pending');
   try{
     const snapshot = sanitizeSnapshot(remoteData);
     const created = await createRemoteSnapshot(snapshot);
@@ -429,36 +437,49 @@ async function createNewSyncCode(){
   }
 }
 
+// ===== JSONBin Remote-Funktionen =====
+// Legt ein neues Bin an und speichert { sessions: snapshot }
 async function createRemoteSnapshot(snapshot){
-  const res = await fetch(SYNC_BASE_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ sessions: snapshot })
+  const body = { sessions: snapshot };
+  const res = await fetch(`${JSONBIN_BASE}/b`, {
+    method: 'POST',
+    headers: BIN_HEADERS,
+    body: JSON.stringify(body),
   });
   if(!res.ok){
-    throw new Error('createRemoteSnapshot failed: '+res.status);
+    throw new Error('createRemoteSnapshot failed: ' + res.status);
   }
-  const data = await res.json();
-  return data?.id;
+  const json = await res.json();
+  const binId = json?.metadata?.id;
+  if(!binId){
+    throw new Error('createRemoteSnapshot: no bin id returned');
+  }
+  return binId; // => syncId
 }
 
+// Holt die letzte Version des Bins
 async function fetchRemoteSnapshot(id){
-  const res = await fetch(SYNC_BASE_URL+id, {cache:'no-store'});
-  if(!res.ok){
-    throw new Error('fetchRemoteSnapshot failed: '+res.status);
-  }
-  const data = await res.json();
-  return data?.sessions || {};
-}
-
-async function updateRemoteSnapshot(id, snapshot){
-  const res = await fetch(SYNC_BASE_URL+id, {
-    method:'PUT',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ sessions: snapshot })
+  const res = await fetch(`${JSONBIN_BASE}/b/${encodeURIComponent(id)}/latest`, {
+    headers: BIN_HEADERS,
+    cache: 'no-store'
   });
   if(!res.ok){
-    throw new Error('updateRemoteSnapshot failed: '+res.status);
+    throw new Error('fetchRemoteSnapshot failed: ' + res.status);
+  }
+  const json = await res.json();
+  return json?.record?.sessions || {};
+}
+
+// Überschreibt das Bin mit der aktuellen Snapshot-Struktur
+async function updateRemoteSnapshot(id, snapshot){
+  const body = { sessions: snapshot };
+  const res = await fetch(`${JSONBIN_BASE}/b/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    headers: BIN_HEADERS,
+    body: JSON.stringify(body),
+  });
+  if(!res.ok){
+    throw new Error('updateRemoteSnapshot failed: ' + res.status);
   }
   return true;
 }
@@ -481,7 +502,7 @@ function removeSessionRecord(key){
 function scheduleRemoteSave(){
   if(remoteSaveTimer) clearTimeout(remoteSaveTimer);
   remoteSaveTimer = setTimeout(()=>{ flushRemoteSave(); }, 1200);
-  updateSyncStatus('Änderungen werden synchronisiert …','pending');
+  updateSyncStatus('Änderungen werden synchronisiert …','pending');
 }
 
 async function flushRemoteSave(){
@@ -709,7 +730,7 @@ function onLoadDay(){
   });
 }
 
-// Overview + Calendar + Recap + Multi‑Chart
+// Overview + Calendar + Recap + Multi-Chart
 function buildOverview(){
   const cal = document.getElementById('calendar'); const label = document.getElementById('monthLabel');
   if(!cal) return;
@@ -877,7 +898,7 @@ function deltaStr(cur, prev, label){
   return `${label}: ${arrow} ${pct>=0?'+':''}${pct.toFixed(0)}%`;
 }
 
-// Multi‑Exercise Chart + Aggregate Score
+// Multi-Exercise Chart + Aggregate Score
 function drawChart(){
   const c=document.getElementById('chart'); const exSel=document.getElementById('exSelect'); const legend = document.getElementById('legend');
   if(!c || !exSel) return;
@@ -970,7 +991,7 @@ function onExportCSV(){
       });
     });
   });
-  const blob=new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'});
+  const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hyrox_training_export.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
 
