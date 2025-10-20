@@ -4,17 +4,17 @@
 const PRESETS = {
   A:[
     {n:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/front-squat/"},
-    {n:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/kreuzheben/"},
+    {n:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
     {n:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
     {n:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], t:"https://modusx.de/fitness-uebungen/bulgarian-split-squat/"},
     {n:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/hip-thrust/"},
-    {n:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/butterfly-maschine/"},
-    {n:"Rückenstrecker", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/rueckenstrecker/"},
+    {n:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/butterfly-an-maschine/"},
+    {n:"Rückenstrecker", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/rueckenstrecken-am-geraet/rueckenstrecken-an-der-rueckenstrecker-maschine/"},
     {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://modusx.de/fitness-uebungen/russian-twist/"}
   ],
   B:[
     {n:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
-    {n:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/kreuzheben/"},
+    {n:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
     {n:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/kniebeuge/"},
     {n:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/latzug/"},
     {n:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/kabelrudern/"},
@@ -626,7 +626,7 @@ function renderTracker(){
       <div class="exercise-head">
         <div class="pill">${idx+1}. ${ex.n}</div>
         <div class="btnrow">
-          <button class="btn ghost" data-act="suggest" data-idx="${idx}">Vorschlag → Satz 1</button>
+          <button class="btn ghost" data-act="suggest" data-idx="${idx}">Vorschläge aktualisieren</button>
           ${ex.t ? `<a class="btn ghost" href="${ex.t}" target="_blank" rel="noopener">Technik</a>`:``}
           <button class="btn" data-act="addset" data-idx="${idx}">+ Satz</button>
           <button class="btn ghost" data-act="removeset" data-idx="${idx}">− Satz</button>
@@ -640,16 +640,20 @@ function renderTracker(){
         <div class="hdr">RPE</div>
       </div>`;
     for(let s=0;s<setCount;s++){
-      const lastW = last?.[s]?.w ?? 0;
-      const lastR = last?.[s]?.reps ?? (ex.reps[s]||0);
-      const lastRPE = last?.[s]?.rpe ?? 0;
-      const sugg = last ? lastW : lastTopSet(ex.n);
+      const recentSets = last || [];
+      const histSet = recentSets[s] ?? null;
+      const fallbackSet = recentSets[recentSets.length-1] ?? null;
+      const baseReps = Array.isArray(ex.reps) ? (ex.reps[s] ?? ex.reps[ex.reps.length-1] ?? '') : '';
+      const sugg = histSet?.w ?? lastTopSet(ex.n);
+      const weightVal = histSet?.w ?? (sugg ?? '');
+      const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
+      const rpeVal = histSet?.rpe ?? '';
       html += `<div class="setgrid" data-idx="${idx}" data-set="${s}">
         <div>${s+1}</div>
-        <div><input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}"></div>
+        <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}"></div>
         <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
-        <div><input type="number" step="1" data-k="reps" value="${lastR||0}"></div>
-        <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${lastRPE||''}"></div>
+        <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
+        <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${rpeVal ?? ''}"></div>
       </div>`;
     }
     html += `</div>`;
@@ -658,11 +662,16 @@ function renderTracker(){
 
   tabTracker.querySelectorAll('[data-act="suggest"]').forEach(btn=>btn.addEventListener('click', ()=>{
     const idx=+btn.dataset.idx;
-    const exName = PRESETS[workoutSel.value][idx].n;
-    const s = lastTopSet(exName);
-    const row = tabTracker.querySelector(`.setgrid[data-idx='${idx}'][data-set='0']`);
-    if(row){ row.querySelector(`[data-k='w']`).value = s||''; row.querySelector(`[data-k='sugg']`).value = s? (s+' kg'): ''; }
-    markDirty(); toast('Vorschlag gesetzt');
+    const ex = PRESETS[workoutSel.value][idx];
+    const last = lastSetsFor(ex.n) || [];
+    const top = lastTopSet(ex.n);
+    tabTracker.querySelectorAll(`.setgrid[data-idx='${idx}']`).forEach((row, setIdx)=>{
+      const histSet = last[setIdx] ?? null;
+      const sugg = histSet?.w ?? top;
+      row.querySelector(`[data-k='w']`).value = sugg ?? '';
+      row.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' kg') : '';
+    });
+    markDirty(); toast('Vorschlag aktualisiert');
   }));
   tabTracker.querySelectorAll('[data-act="addset"]').forEach(btn=>btn.addEventListener('click', ()=>{ addSetRow(+btn.dataset.idx); markDirty(); }));
   tabTracker.querySelectorAll('[data-act="removeset"]').forEach(btn=>btn.addEventListener('click', ()=>{ removeLastSet(+btn.dataset.idx); markDirty(); }));
@@ -673,17 +682,21 @@ function addSetRow(idx){
   const rows = card.querySelectorAll(`.setgrid[data-idx='${idx}']`);
   const s = rows.length;
   const last = lastSetsFor(ex.n);
-  const lastW = last?.[s]?.w ?? 0;
-  const lastR = last?.[s]?.reps ?? (ex.reps[s]||0);
-  const lastRPE = last?.[s]?.rpe ?? 0;
-  const sugg = last ? lastW : lastTopSet(ex.n);
+  const recentSets = last || [];
+  const histSet = recentSets[s] ?? null;
+  const fallbackSet = recentSets[recentSets.length-1] ?? null;
+  const baseReps = Array.isArray(ex.reps) ? (ex.reps[s] ?? ex.reps[ex.reps.length-1] ?? '') : '';
+  const sugg = histSet?.w ?? lastTopSet(ex.n);
+  const weightVal = histSet?.w ?? (sugg ?? '');
+  const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
+  const rpeVal = histSet?.rpe ?? '';
   const row = document.createElement('div');
   row.className='setgrid'; row.dataset.idx=idx; row.dataset.set=s;
   row.innerHTML = `<div>${s+1}</div>
-    <div><input type="number" step="0.5" data-k="w" value="${lastW || (s===0? sugg: 0)}"></div>
+    <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}"></div>
     <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
-    <div><input type="number" step="1" data-k="reps" value="${lastR||0}"></div>
-    <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${lastRPE||''}"></div>`;
+    <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
+    <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${rpeVal ?? ''}"></div>`;
   card.appendChild(row);
 }
 function removeLastSet(idx){
@@ -701,10 +714,14 @@ function onLoadDay(){
     const needed=row.sets?.length||0;
     const current=card.querySelectorAll(`.setgrid[data-idx='${idx}']`).length;
     for(let i=current;i<needed;i++){ addSetRow(idx); }
+    const history = lastSetsFor(row.name) || [];
+    const top = lastTopSet(row.name);
     row.sets?.forEach((s,si)=>{
       const g=card.querySelector(`.setgrid[data-idx='${idx}'][data-set='${si}']`); if(!g) return;
       g.querySelector(`[data-k='w']`).value=s.w||''; g.querySelector(`[data-k='reps']`).value=s.reps||''; g.querySelector(`[data-k='rpe']`).value=s.rpe||'';
-      const sugg = lastTopSet(row.name); g.querySelector(`[data-k='sugg']`).value = sugg? (sugg+' kg'): '';
+      const histSet = history[si] ?? null;
+      const sugg = histSet?.w ?? top;
+      g.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' kg'): '';
     });
   });
 }
