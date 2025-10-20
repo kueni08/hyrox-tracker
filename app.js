@@ -40,6 +40,24 @@ const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
 const importBtn = $('#importCsv');
 const importInput = $('#importCsvFile');
+const syncCodeDisplay = $('#syncCodeDisplay');
+const syncCopyBtn = $('#syncCopy');
+const syncApplyBtn = $('#syncApply');
+const syncInput = $('#syncInput');
+const syncCreateBtn = $('#syncCreate');
+const syncStatusEl = $('#syncStatus');
+const syncRefreshBtn = $('#syncRefresh');
+
+const STORAGE_PREFIX = 'hyrox:';
+const SYNC_ID_KEY = 'athletx:sync:id';
+const SYNC_CACHE_KEY = 'athletx:sync:cache';
+const SYNC_BASE_URL = 'https://api.npoint.io/';
+
+let syncId = localStorage.getItem(SYNC_ID_KEY) || '';
+let remoteData = loadCachedRemoteData();
+let remoteSaveTimer = null;
+let remoteSaving = false;
+let remoteSavePending = false;
 
 // Autosave
 let dirty=false, autosaveTimer=null, saveDebounce=null;
@@ -59,6 +77,19 @@ let timerId=null, startTs=null;
 })();
 
 // Init
+(async function boot(){
+  dateEl.value = todayISO();
+  await initSync();
+  renderTracker();
+  onLoadDay();
+  buildOverview();
+  drawChart();
+  renderActivities();
+  bindTabs();
+  bindControls();
+  setupAutosave();
+  setupTimerFromSession();
+})();
 dateEl.value = todayISO();
 renderTracker(); onLoadDay(); buildOverview(); drawChart(); renderActivities();
 bindTabs(); bindControls(); setupAutosave(); setupTimerFromSession();
@@ -81,6 +112,16 @@ function bindControls(){
   $('#export')?.addEventListener('click', onExportCSV);
   importBtn?.addEventListener('click', ()=>importInput?.click());
   importInput?.addEventListener('change', handleImportCSV);
+  syncCopyBtn?.addEventListener('click', ()=>copySyncCode());
+  syncApplyBtn?.addEventListener('click', async ()=>{ await connectToSyncCode(syncInput?.value); });
+  syncCreateBtn?.addEventListener('click', async ()=>{ await createNewSyncCode(); });
+  syncRefreshBtn?.addEventListener('click', async ()=>{ await refreshRemoteSnapshot(false); });
+  syncInput?.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      syncApplyBtn?.click();
+    }
+  });
   themeToggle?.addEventListener('click', toggleTheme);
   timerBtn?.addEventListener('click', restartTimer);
   dateEl.addEventListener('change', ()=>{ onLoadDay(); buildOverview(); dirty=false; });
@@ -140,34 +181,405 @@ function setupTimerFromSession(){
   }
 }
 
+// Sync storage helpers
+function loadCachedRemoteData(){
+  try{
+    const cached = localStorage.getItem(SYNC_CACHE_KEY);
+    if(cached){
+      const parsed = JSON.parse(cached);
+      if(parsed && typeof parsed==='object') return parsed;
+    }
+  }catch(e){}
+  return localSessionSnapshot();
+}
+
+function persistRemoteCache(){
+  try{
+    localStorage.setItem(SYNC_CACHE_KEY, JSON.stringify(remoteData||{}));
+  }catch(e){}
+}
+
+function localSessionSnapshot(){
+  const snap={};
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    if(!key || !key.startsWith(STORAGE_PREFIX)) continue;
+    try{
+      const data = JSON.parse(localStorage.getItem(key)||'{}');
+      if(data && typeof data==='object'){
+        snap[key]=data;
+      }
+    }catch(e){}
+  }
+  return snap;
+}
+
+function applyLocalSnapshot(snapshot){
+  const keepKeys=new Set();
+  Object.entries(snapshot||{}).forEach(([key, record])=>{
+    if(record && record.deletedAt){
+      localStorage.removeItem(key);
+      return;
+    }
+    if(record && typeof record==='object'){
+      keepKeys.add(key);
+      localStorage.setItem(key, JSON.stringify(record));
+    }
+  });
+  for(let i=localStorage.length-1;i>=0;i--){
+    const key=localStorage.key(i);
+    if(key && key.startsWith(STORAGE_PREFIX) && !keepKeys.has(key)){
+      localStorage.removeItem(key);
+    }
+  }
+  persistRemoteCache();
+}
+
+function sessionKeys(){
+  return Object.keys(remoteData||{}).filter(key=>{
+    const rec=remoteData[key];
+    return rec && typeof rec==='object' && !rec.deletedAt;
+  });
+}
+
+function getSession(key){
+  const rec = remoteData?.[key];
+  if(rec && !rec.deletedAt) return rec;
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(parsed && !parsed.deletedAt) return parsed;
+  }catch(e){}
+  return null;
+}
+
+function sessionEntries(){
+  return sessionKeys().map(key=>({ key, data: remoteData[key] }));
+}
+
+function allSessionsArray(){
+  return sessionEntries().map(entry=>entry.data);
+}
+
+function cloneRecord(rec){
+  return rec ? JSON.parse(JSON.stringify(rec)) : rec;
+}
+
+function mergeSnapshots(base, incoming){
+  const merged = {...(base||{})};
+  Object.entries(incoming||{}).forEach(([key, record])=>{
+    const current = merged[key];
+    merged[key] = chooseRecord(current, record);
+  });
+  return merged;
+}
+
+function chooseRecord(a,b){
+  if(!a) return cloneRecord(b);
+  if(!b) return cloneRecord(a);
+  const aStamp = Math.max(a.updatedAt||0, a.deletedAt||0);
+  const bStamp = Math.max(b.updatedAt||0, b.deletedAt||0);
+  if(bStamp>aStamp) return cloneRecord(b);
+  return cloneRecord(a);
+}
+
+function sanitizeSnapshot(data){
+  return JSON.parse(JSON.stringify(data||{}));
+}
+
+function snapshotFingerprint(data){
+  const sortedKeys = Object.keys(data||{}).sort();
+  const normalized={};
+  sortedKeys.forEach(key=>{
+    const record = data[key];
+    if(record && typeof record==='object' && !Array.isArray(record)){
+      const recKeys = Object.keys(record).sort();
+      const normalizedRec={};
+      recKeys.forEach(k=>{ normalizedRec[k]=record[k]; });
+      normalized[key]=normalizedRec;
+    }else{
+      normalized[key]=record;
+    }
+  });
+  return JSON.stringify(normalized);
+}
+
+async function initSync(){
+  updateSyncCodeDisplay();
+  updateSyncStatus('Initialisiere Sync …','pending');
+  try{
+    remoteData = mergeSnapshots(remoteData, localSessionSnapshot());
+    persistRemoteCache();
+    applyLocalSnapshot(remoteData);
+    if(syncId){
+      await refreshRemoteSnapshot(true);
+    }else{
+      await ensureRemoteCodeExists();
+    }
+  }catch(err){
+    console.error('Sync init failed', err);
+    updateSyncStatus('Offline – nutze lokale Daten','error');
+  }
+  updateSyncCodeDisplay();
+}
+
+async function ensureRemoteCodeExists(){
+  try{
+    const snapshot = sanitizeSnapshot(remoteData);
+    const created = await createRemoteSnapshot(snapshot);
+    syncId = created;
+    if(syncId){
+      localStorage.setItem(SYNC_ID_KEY, syncId);
+      updateSyncStatus('Sync aktiviert','success');
+    }
+  }catch(err){
+    console.warn('Could not create remote dataset', err);
+    updateSyncStatus('Sync offline – speichere lokal','warning');
+  }
+}
+
+async function refreshRemoteSnapshot(silent){
+  if(!syncId){
+    if(!silent) updateSyncStatus('Kein Sync-Code vorhanden','warning');
+    return;
+  }
+  if(!silent) updateSyncStatus('Aktualisiere aus der Cloud …','pending');
+  try{
+    const remoteSnap = await fetchRemoteSnapshot(syncId);
+    const incoming = sanitizeSnapshot(remoteSnap);
+    const merged = mergeSnapshots(remoteSnap, remoteData);
+    const mergedSnap = sanitizeSnapshot(merged);
+    const needsUpload = snapshotFingerprint(mergedSnap) !== snapshotFingerprint(incoming);
+    remoteData = merged;
+    persistRemoteCache();
+    applyLocalSnapshot(remoteData);
+    updateSyncStatus('Synchronisiert','success');
+    if(!silent){
+      renderTracker();
+      onLoadDay();
+      buildOverview();
+      renderActivities();
+      drawChart();
+    }
+    if(needsUpload){
+      scheduleRemoteSave();
+    }
+  }catch(err){
+    console.warn('Remote refresh failed', err);
+    updateSyncStatus('Sync nicht erreichbar – arbeite lokal', silent?'warning':'error');
+    if(!silent) toast('Cloud Sync nicht erreichbar');
+  }
+}
+
+async function connectToSyncCode(code){
+  const trimmed = (code||'').trim();
+  if(!trimmed){
+    updateSyncStatus('Bitte gültigen Sync-Code eingeben','warning');
+    return;
+  }
+  updateSyncStatus('Verbinde …','pending');
+  try{
+    const remoteSnap = await fetchRemoteSnapshot(trimmed);
+    syncId = trimmed;
+    localStorage.setItem(SYNC_ID_KEY, syncId);
+    const incoming = sanitizeSnapshot(remoteSnap);
+    const merged = mergeSnapshots(remoteSnap, remoteData);
+    const mergedSnap = sanitizeSnapshot(merged);
+    const needsUpload = snapshotFingerprint(mergedSnap) !== snapshotFingerprint(incoming);
+    remoteData = merged;
+    persistRemoteCache();
+    applyLocalSnapshot(remoteData);
+    updateSyncCodeDisplay();
+    updateSyncStatus('Sync verbunden','success');
+    syncInput && (syncInput.value='');
+    renderTracker();
+    onLoadDay();
+    buildOverview();
+    renderActivities();
+    drawChart();
+    if(needsUpload){
+      scheduleRemoteSave();
+    }
+  }catch(err){
+    console.error('Connect to sync code failed', err);
+    updateSyncStatus('Sync-Code nicht gefunden oder Netzwerkproblem','error');
+  }
+}
+
+async function createNewSyncCode(){
+  updateSyncStatus('Erstelle neuen Sync-Code …','pending');
+  try{
+    const snapshot = sanitizeSnapshot(remoteData);
+    const created = await createRemoteSnapshot(snapshot);
+    if(created){
+      syncId = created;
+      localStorage.setItem(SYNC_ID_KEY, syncId);
+      updateSyncCodeDisplay();
+      updateSyncStatus('Neuer Sync-Code aktiv','success');
+    }else{
+      updateSyncStatus('Neuer Sync-Code konnte nicht erstellt werden','error');
+    }
+  }catch(err){
+    console.error('Create new sync code failed', err);
+    updateSyncStatus('Neuer Sync-Code konnte nicht erstellt werden','error');
+  }
+}
+
+async function createRemoteSnapshot(snapshot){
+  const res = await fetch(SYNC_BASE_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ sessions: snapshot })
+  });
+  if(!res.ok){
+    throw new Error('createRemoteSnapshot failed: '+res.status);
+  }
+  const data = await res.json();
+  return data?.id;
+}
+
+async function fetchRemoteSnapshot(id){
+  const res = await fetch(SYNC_BASE_URL+id, {cache:'no-store'});
+  if(!res.ok){
+    throw new Error('fetchRemoteSnapshot failed: '+res.status);
+  }
+  const data = await res.json();
+  return data?.sessions || {};
+}
+
+async function updateRemoteSnapshot(id, snapshot){
+  const res = await fetch(SYNC_BASE_URL+id, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ sessions: snapshot })
+  });
+  if(!res.ok){
+    throw new Error('updateRemoteSnapshot failed: '+res.status);
+  }
+  return true;
+}
+
+function setSessionRecord(key, session){
+  const record = {...session, updatedAt: Date.now()};
+  remoteData[key] = record;
+  localStorage.setItem(key, JSON.stringify(record));
+  persistRemoteCache();
+  scheduleRemoteSave();
+}
+
+function removeSessionRecord(key){
+  localStorage.removeItem(key);
+  remoteData[key] = { deletedAt: Date.now() };
+  persistRemoteCache();
+  scheduleRemoteSave();
+}
+
+function scheduleRemoteSave(){
+  if(remoteSaveTimer) clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = setTimeout(()=>{ flushRemoteSave(); }, 1200);
+  updateSyncStatus('Änderungen werden synchronisiert …','pending');
+}
+
+async function flushRemoteSave(){
+  if(remoteSaving){
+    remoteSavePending = true;
+    return;
+  }
+  if(remoteSaveTimer){
+    clearTimeout(remoteSaveTimer);
+    remoteSaveTimer=null;
+  }
+  if(!syncId){
+    await ensureRemoteCodeExists();
+    updateSyncCodeDisplay();
+    if(!syncId) return;
+  }
+  remoteSaving = true;
+  try{
+    const snapshot = sanitizeSnapshot(remoteData);
+    await updateRemoteSnapshot(syncId, snapshot);
+    updateSyncStatus('Synchronisiert','success');
+  }catch(err){
+    console.error('Remote save failed', err);
+    updateSyncStatus('Sync fehlgeschlagen – Daten lokal gespeichert','error');
+  }finally{
+    remoteSaving=false;
+    if(remoteSavePending){
+      remoteSavePending=false;
+      scheduleRemoteSave();
+    }
+  }
+}
+
+function updateSyncCodeDisplay(){
+  if(syncCodeDisplay){
+    syncCodeDisplay.value = syncId || '';
+    syncCodeDisplay.placeholder = syncId? '' : 'Noch kein Code';
+  }
+}
+
+function updateSyncStatus(message, state){
+  if(!syncStatusEl) return;
+  syncStatusEl.textContent = message;
+  syncStatusEl.dataset.state = state || 'info';
+}
+
+async function copySyncCode(){
+  if(!syncId){
+    updateSyncStatus('Kein Sync-Code vorhanden','warning');
+    return;
+  }
+  try{
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(syncId);
+    }else{
+      throw new Error('clipboard API unavailable');
+    }
+    toast('Sync-Code kopiert');
+  }catch(err){
+    try{
+      if(syncCodeDisplay){
+        syncCodeDisplay.removeAttribute('readonly');
+        syncCodeDisplay.select();
+        document.execCommand && document.execCommand('copy');
+        syncCodeDisplay.setAttribute('readonly','');
+        syncCodeDisplay.blur();
+        toast('Sync-Code kopiert');
+        return;
+      }
+    }catch(_){}
+    updateSyncStatus('Konnte nicht kopieren – bitte Code markieren','warning');
+  }
+}
+
 // Storage
-function storageKey(){ return `hyrox:${workoutSel.value}:${dateEl.value}`; }
+function storageKey(){ return `${STORAGE_PREFIX}${workoutSel.value}:${dateEl.value}`; }
 
 // Historie
 function lastSetsFor(exName){
-  const keys = Object.keys(localStorage).filter(k=>k.startsWith('hyrox:')).sort();
-  let latest=null, latestDate='';
-  keys.forEach(k=>{
-    try{
-      const d=JSON.parse(localStorage.getItem(k)||'{}');
-      const row=(d.rows||[]).find(r=>r.name===exName);
-      if(row && d.date && d.date>latestDate){ latest=row.sets||[]; latestDate=d.date; }
-    }catch(e){}
+  let latest=null, latestDate='', latestStamp=0;
+  sessionEntries().forEach(({data})=>{
+    const row=(data.rows||[]).find(r=>r.name===exName);
+    if(!row || !data.date) return;
+    const stamp = Math.max(data.updatedAt||0, new Date(data.date+'T00:00:00').getTime()||0);
+    if(data.date>latestDate || (data.date===latestDate && stamp>latestStamp)){
+      latest=row.sets||[];
+      latestDate=data.date;
+      latestStamp=stamp;
+    }
   });
   return latest;
 }
 function lastTopSet(exName){
-  const keys = Object.keys(localStorage).filter(k=>k.startsWith('hyrox:'));
   const hist=[];
-  keys.forEach(k=>{
-    try{
-      const d=JSON.parse(localStorage.getItem(k)||'{}');
-      d?.rows?.forEach(r=>{ if(r.name===exName){
-        const top = Math.max(...(r.sets||[]).map(s=>+s.w||0),0);
-        const topRPE = (r.sets||[]).reduce((a,s)=> Math.max(a, +s.rpe||0), 0);
-        if(top>0) hist.push({date:d.date, w:top, rpe:topRPE});
-      }});
-    }catch(e){}
+  sessionEntries().forEach(({data})=>{
+    (data.rows||[]).forEach(r=>{
+      if(r.name!==exName) return;
+      const top = Math.max(...(r.sets||[]).map(s=>+s.w||0),0);
+      const topRPE = (r.sets||[]).reduce((a,s)=> Math.max(a, +s.rpe||0), 0);
+      if(top>0){ hist.push({date:data.date, w:top, rpe:topRPE}); }
+    });
   });
   hist.sort((a,b)=> a.date.localeCompare(b.date));
   const last = hist[hist.length-1]; if(!last) return 0;
@@ -191,6 +603,7 @@ function collect(){
   return day;
 }
 function saveDay(silent=true){
+  setSessionRecord(storageKey(), collect());
   localStorage.setItem(storageKey(), JSON.stringify(collect()));
   dirty=false;
   if(saveDebounce){ clearTimeout(saveDebounce); saveDebounce=null; }
@@ -279,8 +692,7 @@ function removeLastSet(idx){
 // Load
 function onLoadDay(){
   renderTracker();
-  const raw=localStorage.getItem(storageKey()); if(!raw){ return; }
-  const d=JSON.parse(raw);
+  const d = getSession(storageKey()); if(!d){ return; }
   (d.rows||[]).forEach((row,idx)=>{
     const card=document.getElementById(`card-${idx}`); if(!card) return;
     const needed=row.sets?.length||0;
@@ -346,6 +758,16 @@ function buildOverview(){
 function renderActivities(){
   const list=document.getElementById('activitiesList');
   if(!list) return;
+  const entries=sessionEntries().map(({key,data})=>{
+    if(!data || !data.date) return null;
+    const summary=(data.rows||[]).reduce((acc,row)=>{
+      const sets=row.sets||[];
+      acc.exercises+=1;
+      acc.sets+=sets.length;
+      sets.forEach(s=>{ acc.volume+=(+s.w||0)*(+s.reps||0); });
+      return acc;
+    }, {exercises:0, sets:0, volume:0});
+    return {key, date:data.date, workout:data.workout||'', summary};
   const keys=Object.keys(localStorage).filter(k=>k.startsWith('hyrox:'));
   const entries=keys.map(k=>{
     try{
@@ -395,6 +817,7 @@ function renderActivities(){
 }
 function deleteActivity(key){
   if(!key) return;
+  removeSessionRecord(key);
   localStorage.removeItem(key);
   toast('Training gelöscht');
   renderActivities();
@@ -402,7 +825,7 @@ function deleteActivity(key){
   onLoadDay();
 }
 function dayWorkoutBadge(iso){
-  const a=localStorage.getItem(`hyrox:A:${iso}`); const b=localStorage.getItem(`hyrox:B:${iso}`);
+  const a=getSession(`${STORAGE_PREFIX}A:${iso}`); const b=getSession(`${STORAGE_PREFIX}B:${iso}`);
   if(a&&b) return 'AB'; if(a) return 'A'; if(b) return 'B'; return null;
 }
 function dayCell(txt,badge){
@@ -426,8 +849,7 @@ function computeRecaps(refDate){
   $('#moDelta').textContent = deltaStr(monthStats.volume, prevMonthStats.volume, 'Volumen');
 }
 function summarize(refDate){
-  const allKeys = Object.keys(localStorage).filter(k=>k.startsWith('hyrox:'));
-  const days = allKeys.map(k=>{ try{ const d=JSON.parse(localStorage.getItem(k)||'{}'); return d; }catch(e){return null;} }).filter(Boolean);
+  const days = allSessionsArray().filter(Boolean);
   const d0 = new Date(refDate);
   const weekStart = new Date(d0); weekStart.setDate(d0.getDate()-((d0.getDay()+6)%7)); // Mon
   const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
@@ -483,9 +905,18 @@ function drawChart(){
 
   // Build datasets
   const series=[]; let globalDates=new Set();
+  const sessions = sessionEntries().map(entry=>entry.data);
   selected.forEach((ex,i)=>{
-    const keys=Object.keys(localStorage).filter(k=>k.startsWith('hyrox:')).sort();
-    const hist=[]; keys.forEach(k=>{ try{ const d=JSON.parse(localStorage.getItem(k)||'{}'); const row=d.rows?.find(r=>r.name===ex); if(row){ const top=Math.max(...row.sets.map(s=>+s.w||0),0); if(top>0){ hist.push({date:d.date,w:top}); globalDates.add(d.date);} } }catch(e){} });
+    const hist=[];
+    sessions.forEach(data=>{
+      const row=data.rows?.find(r=>r.name===ex);
+      if(!row) return;
+      const top = Math.max(...(row.sets||[]).map(s=>+s.w||0),0);
+      if(top>0){
+        hist.push({date:data.date,w:top});
+        if(data.date) globalDates.add(data.date);
+      }
+    });
     hist.sort((a,b)=>a.date.localeCompare(b.date));
     series.push({name:ex, color:colors[i%colors.length], data:hist});
   });
@@ -543,13 +974,11 @@ function aggregateProgress(series){
 
 // Export CSV
 function onExportCSV(){
-  const keys=Object.keys(localStorage).filter(k=>k.startsWith('hyrox:')).sort();
   const rows=["Datum;Workout;Übung;Satz;Gewicht;Wdh.;RPE"];
-  keys.forEach(k=>{
-    const d=JSON.parse(localStorage.getItem(k)||'{}');
-    (d.rows||[]).forEach(r=>{
+  sessionEntries().sort((a,b)=>a.key.localeCompare(b.key)).forEach(({data})=>{
+    (data.rows||[]).forEach(r=>{
       (r.sets||[]).forEach((s,si)=>{
-        rows.push([d.date,d.workout,r.name,si+1,s.w||'',s.reps||'',s.rpe||''].join(';'));
+        rows.push([data.date,data.workout,r.name,si+1,s.w||'',s.reps||'',s.rpe||''].join(';'));
       });
     });
   });
@@ -630,6 +1059,12 @@ function applyImportedSessions(sessions){
   let count=0;
   sessions.forEach(session=>{
     if(!session?.date || !session?.workout) return;
+    const key=`${STORAGE_PREFIX}${session.workout}:${session.date}`;
+    setSessionRecord(key, {
+      date: session.date,
+      workout: session.workout,
+      rows: session.rows
+    });
     const key=`hyrox:${session.workout}:${session.date}`;
     localStorage.setItem(key, JSON.stringify({
       date: session.date,

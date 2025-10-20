@@ -111,6 +111,29 @@
             <input type="file" id="importCsvFile" accept=".csv,text/csv" hidden />
             <button id="importCsv" class="btn ghost">Import CSV</button>
           </div>
+        </div>
+        <div class="sync-card">
+          <div class="sync-card-head">
+            <h3>Cloud Sync</h3>
+            <span class="sync-status" id="syncStatus" data-state="pending">Initialisiere …</span>
+          </div>
+          <p class="hint">Nutze den Sync-Code, um deine Trainings auf anderen Geräten zu laden. Änderungen werden automatisch synchronisiert, sobald eine Verbindung besteht.</p>
+          <div class="sync-field">
+            <label for="syncCodeDisplay">Mein Sync-Code</label>
+            <div class="sync-row">
+              <input id="syncCodeDisplay" type="text" readonly placeholder="Noch kein Code" />
+              <button class="btn ghost" id="syncCopy">Kopieren</button>
+              <button class="btn ghost" id="syncRefresh">Aktualisieren</button>
+            </div>
+          </div>
+          <div class="sync-field">
+            <label for="syncInput">Mit Code verbinden</label>
+            <div class="sync-row">
+              <input id="syncInput" type="text" placeholder="Sync-Code eingeben" autocomplete="off" />
+              <button class="btn" id="syncApply">Verbinden</button>
+              <button class="btn ghost" id="syncCreate">Neuer Code</button>
+            </div>
+          </div>
           <h2>Aktivitäten</h2>
           <p class="hint">Hier findest du alle gespeicherten Trainings. Löschen ist nur hier möglich.</p>
         </div>
