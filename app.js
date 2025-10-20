@@ -89,6 +89,16 @@ let timerId=null, startTs=null;
   bindControls();
   setupAutosave();
   setupTimerFromSession();
+  try{
+    await initSync();
+  }finally{
+    renderTracker();
+    onLoadDay();
+    buildOverview();
+    drawChart();
+    renderActivities();
+  }
+})();
 })();
 dateEl.value = todayISO();
 renderTracker(); onLoadDay(); buildOverview(); drawChart(); renderActivities();
