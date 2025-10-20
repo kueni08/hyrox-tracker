@@ -138,6 +138,15 @@ const WORKOUTS_CONFIG_KEY = `${STORAGE_PREFIX}cfg:workouts`;
 const SYNC_ID_KEY = 'athletx:sync:id';
 const SYNC_CACHE_KEY = 'athletx:sync:cache';
 
+let exerciseLibraryOptions = [];
+let statSelectedExercises = new Set();
+let exercisePickerEl = null;
+let exercisePickerVisible = false;
+let exercisePickerActiveInput = null;
+let exercisePickerFiltered = [];
+let exercisePickerHighlight = -1;
+let exercisePickerCloseTimer = null;
+
 // ===== JSONBin Konfiguration (statt npoint) =====
 // 1) JSONBin.io → Dashboard → API Keys → Master-Key kopieren (Klartext, KEIN $2a$… Hash)
 // 2) Unten einfügen:
@@ -489,7 +498,6 @@ async function boot(){
   renderTracker();
   onLoadDay();
   buildOverview();
-  drawChart();
   renderActivities();
 }
 boot();
@@ -502,7 +510,7 @@ function bindTabs(){
     const tab = t.dataset.tab;
     const sections = { tracker: tabTracker, overview: tabOverview, activities: tabActivities, workouts: tabWorkouts };
     Object.entries(sections).forEach(([name, el])=>{ if(el) el.classList.toggle('hidden', name!==tab); });
-    if(tab==='overview'){ buildOverview(); drawChart(); }
+    if(tab==='overview'){ buildOverview(); }
     if(tab==='activities'){ renderActivities(); }
     if(tab==='workouts'){ renderWorkoutManager(); }
   }));
@@ -1714,6 +1722,7 @@ function handleImportCSV(evt){
       if(imported>0){ toast(`${imported} Training${imported===1?'':'s'} importiert`); }
       else{ toast('Keine Trainings importiert'); }
       renderActivities();
+      renderExerciseLibrary();
       buildOverview();
       onLoadDay();
     }catch(err){
