@@ -77,32 +77,25 @@ let timerId=null, startTs=null;
 })();
 
 // Init
-(async function boot(){
+async function boot(){
   dateEl.value = todayISO();
-  await initSync();
-  renderTracker();
-  onLoadDay();
-  buildOverview();
-  drawChart();
-  renderActivities();
   bindTabs();
   bindControls();
   setupAutosave();
   setupTimerFromSession();
   try{
     await initSync();
-  }finally{
-    renderTracker();
-    onLoadDay();
-    buildOverview();
-    drawChart();
-    renderActivities();
+  }catch(err){
+    console.error('Initial sync failed', err);
+    updateSyncStatus('Sync offline – nutze lokale Daten','warning');
   }
-})();
-})();
-dateEl.value = todayISO();
-renderTracker(); onLoadDay(); buildOverview(); drawChart(); renderActivities();
-bindTabs(); bindControls(); setupAutosave(); setupTimerFromSession();
+  onLoadDay();
+  buildOverview();
+  drawChart();
+  renderActivities();
+}
+
+boot();
 
 // Tabs
 function bindTabs(){
@@ -778,20 +771,6 @@ function renderActivities(){
       return acc;
     }, {exercises:0, sets:0, volume:0});
     return {key, date:data.date, workout:data.workout||'', summary};
-  const keys=Object.keys(localStorage).filter(k=>k.startsWith('hyrox:'));
-  const entries=keys.map(k=>{
-    try{
-      const data=JSON.parse(localStorage.getItem(k)||'{}');
-      if(!data || !data.date) return null;
-      const summary=(data.rows||[]).reduce((acc,row)=>{
-        const sets=row.sets||[];
-        acc.exercises+=1;
-        acc.sets+=sets.length;
-        sets.forEach(s=>{ acc.volume+=(+s.w||0)*(+s.reps||0); });
-        return acc;
-      }, {exercises:0, sets:0, volume:0});
-      return {key:k, date:data.date, workout:data.workout||'', summary};
-    }catch(e){ return null; }
   }).filter(Boolean).sort((a,b)=>{
     if(a.date===b.date){ return a.workout.localeCompare(b.workout); }
     return b.date.localeCompare(a.date);
@@ -828,7 +807,6 @@ function renderActivities(){
 function deleteActivity(key){
   if(!key) return;
   removeSessionRecord(key);
-  localStorage.removeItem(key);
   toast('Training gelöscht');
   renderActivities();
   buildOverview();
@@ -1075,12 +1053,6 @@ function applyImportedSessions(sessions){
       workout: session.workout,
       rows: session.rows
     });
-    const key=`hyrox:${session.workout}:${session.date}`;
-    localStorage.setItem(key, JSON.stringify({
-      date: session.date,
-      workout: session.workout,
-      rows: session.rows
-    }));
     count++;
   });
   return count;
