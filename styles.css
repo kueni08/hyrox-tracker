@@ -156,6 +156,8 @@ input[type=number]{appearance:textfield; text-align:center}
 .sync-row input{flex:1 1 200px; min-width:160px; padding:10px 12px; border-radius:10px}
 .sync-row .btn{flex:0 0 auto; padding:8px 12px}
 .sync-row .btn.ghost{background:transparent}
+.activities-head h2{margin:0; font-size:18px}
+.activities-list{display:flex; flex-direction:column; gap:10px}
 .activity-item{background:color-mix(in oklab, var(--surface) 92%, #000 8%); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px}
 .activity-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
 .activity-main{display:flex; flex-direction:column; gap:2px; min-width:160px}
