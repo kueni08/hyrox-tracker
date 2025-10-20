@@ -33,7 +33,7 @@ body{margin:0;background:linear-gradient(180deg,var(--bg) 0%, var(--surface) 100
   padding:8px 10px; border-radius:10px; font-weight:700}
 .tab.active{color:var(--text); background:linear-gradient(135deg, var(--primary), var(--accent))}
 .panel{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px; margin-top:12px; box-shadow:var(--shadow);
-  width:100%; overflow-x:hidden}
+  width:100%; overflow:visible}
 .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .controls .spacer{flex:1 1 auto}
 .top-actions{display:flex; gap:8px; align-items:center}
@@ -93,19 +93,30 @@ input[type=number]{appearance:textfield; text-align:center}
 /* Overview */
 .overview{display:grid; grid-template-columns:1fr; gap:12px}
 @media (min-width:900px){ .overview{grid-template-columns:360px 1fr} }
-.calendar-card,.chart-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px}
+.calendar-card,.chart-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; overflow:hidden}
+.calendar-card{overflow-x:auto; padding-bottom:14px; -webkit-overflow-scrolling:touch}
 .calendar-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:8px}
-.icon{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 10px}
+.icon{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 10px; flex:0 0 auto}
 .month{font-weight:800}
-.calendar-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px}
+.calendar-weekdays{display:grid; grid-template-columns:repeat(7, minmax(44px,1fr)); gap:6px; min-width:320px; margin-bottom:4px; color:var(--muted); font-weight:700; font-size:12px; text-transform:uppercase}
+.calendar-weekdays div{text-align:center; padding:2px 0; letter-spacing:.5px}
+.calendar-grid{display:grid; grid-template-columns:repeat(7, minmax(44px,1fr)); gap:6px; min-width:320px}
 .day{aspect-ratio:1; border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center;
-  background:color-mix(in oklab, var(--surface) 90%, #000 10%); color:var(--muted); cursor:pointer; position:relative}
+  background:color-mix(in oklab, var(--surface) 90%, #000 10%); color:var(--muted); cursor:pointer; position:relative; font-size:14px}
 .day.has{outline:2px solid var(--primary); color:var(--text)}
 .day.active{background:linear-gradient(135deg,var(--primary),var(--accent)); color:#081018; font-weight:800}
 .day .badge-ab{ position:absolute; right:6px; top:6px; background:linear-gradient(135deg,var(--primary),var(--accent)); color:#081018; border-radius:8px; padding:2px 6px; font-size:10px; font-weight:800; line-height:1; border:1px solid rgba(0,0,0,.2); }
 .legend{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; flex-wrap:wrap}
 .legend .entry{display:flex; align-items:center; gap:6px}
 .legend .dot{width:10px; height:10px; border-radius:999px; display:inline-block}
+
+@media (max-width:720px){
+  .calendar-card{padding:10px 8px 14px}
+  .calendar-weekdays{gap:4px; grid-template-columns:repeat(7, minmax(36px,1fr)); min-width:280px; font-size:11px}
+  .calendar-grid{gap:4px; grid-template-columns:repeat(7, minmax(36px,1fr)); min-width:280px}
+  .day{font-size:13px}
+  .day .badge-ab{font-size:9px; padding:2px 5px}
+}
 
 .hint{color:var(--muted); font-size:12px; margin-top:6px}
 .aggregate{margin-top:8px; display:flex; gap:12px; flex-wrap:wrap}
@@ -122,3 +133,20 @@ input[type=number]{appearance:textfield; text-align:center}
 .footer{margin:16px 4px; color:var(--muted); font-size:12px; text-align:center}
 .flash{position:fixed; right:16px; bottom:16px; background:linear-gradient(135deg,var(--primary),var(--accent)); color:#081018; padding:10px 12px; border-radius:10px; font-weight:800; box-shadow:var(--shadow)}
 .hidden{display:none}
+
+/* Activities */
+.activities{display:flex; flex-direction:column; gap:12px}
+.activities-head{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; justify-content:space-between}
+.activities-title{display:flex; flex-direction:column; gap:4px; min-width:200px}
+.activities-head h2{margin:0; font-size:18px}
+.activities-actions{display:flex; align-items:center; gap:8px}
+.activities-actions .btn{padding:8px 12px; font-size:14px}
+.activities-list{display:flex; flex-direction:column; gap:10px}
+.activity-item{background:color-mix(in oklab, var(--surface) 92%, #000 8%); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px}
+.activity-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.activity-main{display:flex; flex-direction:column; gap:2px; min-width:160px}
+.activity-meta{color:var(--muted); font-size:12px}
+.activity-volume{font-weight:600; font-size:13px}
+.activity-actions{margin-left:auto; display:flex; gap:6px}
+.activity-actions .btn{padding:8px 12px; font-size:14px}
+.activities-empty{color:var(--muted); font-size:13px; background:color-mix(in oklab, var(--surface) 92%, #000 8%); border:1px dashed var(--border); border-radius:12px; padding:14px; text-align:center}
