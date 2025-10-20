@@ -22,6 +22,7 @@
         <button class="tab active" data-tab="tracker">Training</button>
         <button class="tab" data-tab="overview">Übersicht</button>
         <button class="tab" data-tab="activities">Aktivitäten</button>
+        <button class="tab" data-tab="workouts">Workouts</button>
       </nav>
       <div class="top-actions">
         <button id="timerBtn" class="btn timer" title="Timer starten/neu starten">⏱ 00:00</button>
@@ -88,6 +89,15 @@
             <label class="chip">Übungen
               <select id="exSelect" multiple size="6"></select>
             </label>
+            <label class="chip">Zeitraum
+              <select id="statRange">
+                <option value="4w">Letzte 4 Wochen</option>
+                <option value="12w">Letzte 12 Wochen</option>
+                <option value="26w">Letzte 6 Monate</option>
+                <option value="52w">Letztes Jahr</option>
+                <option value="all">Gesamter Zeitraum</option>
+              </select>
+            </label>
             <div class="legend" id="legend"></div>
           </div>
           <canvas id="chart" width="900" height="320"></canvas>
@@ -142,6 +152,14 @@
       </div>
     </section>
 
+    <!-- WORKOUTS TAB -->
+    <section id="tab-workouts" class="panel hidden">
+      <div class="workouts" id="workoutManager"></div>
+      <div class="workouts-actions">
+        <button id="addWorkout" class="btn">+ Workout</button>
+      </div>
+    </section>
+
     <footer class="footer">
       <div>Defaults satzgenau vom letzten Mal, sonst konservativer Vorschlag. Autosave 3 Min. • Installierbar (PWA).</div>
     </footer>
@@ -155,5 +173,14 @@
       });
     }
   </script>
+  <datalist id="exerciseLibrary"></datalist>
+
+  <div id="activityDetail" class="modal hidden">
+    <div class="modal-backdrop" data-close="activityDetail"></div>
+    <div class="modal-content">
+      <button class="modal-close" data-close="activityDetail" aria-label="Detail schließen">×</button>
+      <div id="activityDetailBody"></div>
+    </div>
+  </div>
 </body>
 </html>
