@@ -133,6 +133,11 @@ input[type=number]{appearance:textfield; text-align:center}
 
 /* Activities */
 .activities{display:flex; flex-direction:column; gap:12px}
+.activities-head{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; justify-content:space-between}
+.activities-title{display:flex; flex-direction:column; gap:4px; min-width:200px}
+.activities-head h2{margin:0; font-size:18px}
+.activities-actions{display:flex; align-items:center; gap:8px}
+.activities-actions .btn{padding:8px 12px; font-size:14px}
 .activities-head h2{margin:0; font-size:18px}
 .activities-list{display:flex; flex-direction:column; gap:10px}
 .activity-item{background:color-mix(in oklab, var(--surface) 92%, #000 8%); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px}

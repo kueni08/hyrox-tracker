@@ -37,6 +37,8 @@ const tabOverview = $('#tab-overview');
 const tabActivities = $('#tab-activities');
 const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
+const importBtn = $('#importCsv');
+const importInput = $('#importCsvFile');
 
 // Autosave
 let dirty=false, autosaveTimer=null, saveDebounce=null;
@@ -76,6 +78,8 @@ function bindTabs(){
 function bindControls(){
   $('#save')?.addEventListener('click', ()=>saveDay(false));
   $('#export')?.addEventListener('click', onExportCSV);
+  importBtn?.addEventListener('click', ()=>importInput?.click());
+  importInput?.addEventListener('change', handleImportCSV);
   themeToggle?.addEventListener('click', toggleTheme);
   timerBtn?.addEventListener('click', restartTimer);
   dateEl.addEventListener('change', ()=>{ onLoadDay(); buildOverview(); dirty=false; });
@@ -546,6 +550,102 @@ function onExportCSV(){
   });
   const blob=new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hyrox_training_export.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function handleImportCSV(evt){
+  const file = evt.target?.files?.[0];
+  if(!file){ evt.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const text = String(reader.result||'');
+      const sessions = parseImportCSV(text);
+      const imported = applyImportedSessions(sessions);
+      if(imported>0){ toast(`${imported} Training${imported===1?'':'s'} importiert`); }
+      else{ toast('Keine Trainings importiert'); }
+      renderActivities();
+      buildOverview();
+      onLoadDay();
+    }catch(err){
+      console.error('Import CSV failed', err);
+      toast('Import fehlgeschlagen');
+    }finally{
+      evt.target.value='';
+    }
+  };
+  reader.onerror = ()=>{
+    toast('Import fehlgeschlagen');
+    evt.target.value='';
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+function parseImportCSV(text){
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return [];
+  const headerRe=/^datum\s*;\s*workout/i;
+  if(headerRe.test(lines[0])){ lines.shift(); }
+  const sessionsMap=new Map();
+  lines.forEach(line=>{
+    const parts=line.split(';');
+    if(parts.length<3) return;
+    const [date, workout, exercise, setIdx, weight, reps, rpe]=parts.map(p=>p.trim());
+    if(!date || !workout || !exercise) return;
+    const key=`hyrox:${workout}:${date}`;
+    if(!sessionsMap.has(key)){
+      sessionsMap.set(key,{date, workout, rows:new Map()});
+    }
+    const session=sessionsMap.get(key);
+    if(!session.rows.has(exercise)){
+      session.rows.set(exercise,{name:exercise, sets:[]});
+    }
+    const row=session.rows.get(exercise);
+    const idx=Math.max(0,(parseInt(setIdx,10)||row.sets.length+1)-1);
+    row.sets[idx]={
+      w: parseNumber(weight),
+      reps: parseIntSafe(reps),
+      rpe: parseNumber(rpe)
+    };
+  });
+  return [...sessionsMap.values()].map(session=>({
+    date: session.date,
+    workout: session.workout,
+    rows: [...session.rows.values()].map(row=>({
+      name: row.name,
+      sets: row.sets.filter(Boolean).map(set=>({
+        w: set?.w||0,
+        reps: set?.reps||0,
+        rpe: set?.rpe||0
+      }))
+    }))
+  })).filter(session=>session.rows.length>0);
+}
+
+function applyImportedSessions(sessions){
+  let count=0;
+  sessions.forEach(session=>{
+    if(!session?.date || !session?.workout) return;
+    const key=`hyrox:${session.workout}:${session.date}`;
+    localStorage.setItem(key, JSON.stringify({
+      date: session.date,
+      workout: session.workout,
+      rows: session.rows
+    }));
+    count++;
+  });
+  return count;
+}
+
+function parseNumber(val){
+  if(val===undefined || val===null || val==='') return 0;
+  const n=Number(String(val).replace(',', '.'));
+  return Number.isFinite(n)? n : 0;
+}
+
+function parseIntSafe(val){
+  if(val===undefined || val===null || val==='') return 0;
+  const n=parseInt(String(val).replace(',', '.'),10);
+  return Number.isFinite(n)? n : 0;
 }
 
 // Toast
