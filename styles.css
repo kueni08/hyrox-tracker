@@ -98,6 +98,8 @@ input[type=number]{appearance:textfield; text-align:center}
 .calendar-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:8px}
 .icon{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 10px; flex:0 0 auto}
 .month{font-weight:800}
+.calendar-weekdays{display:grid; grid-template-columns:repeat(7, minmax(44px,1fr)); gap:6px; min-width:320px; margin-bottom:4px; color:var(--muted); font-weight:700; font-size:12px; text-transform:uppercase}
+.calendar-weekdays div{text-align:center; padding:2px 0; letter-spacing:.5px}
 .calendar-grid{display:grid; grid-template-columns:repeat(7, minmax(44px,1fr)); gap:6px; min-width:320px}
 .day{aspect-ratio:1; border:1px solid var(--border); border-radius:10px; display:flex; align-items:center; justify-content:center;
   background:color-mix(in oklab, var(--surface) 90%, #000 10%); color:var(--muted); cursor:pointer; position:relative; font-size:14px}
@@ -110,6 +112,7 @@ input[type=number]{appearance:textfield; text-align:center}
 
 @media (max-width:720px){
   .calendar-card{padding:10px 8px 14px}
+  .calendar-weekdays{gap:4px; grid-template-columns:repeat(7, minmax(36px,1fr)); min-width:280px; font-size:11px}
   .calendar-grid{gap:4px; grid-template-columns:repeat(7, minmax(36px,1fr)); min-width:280px}
   .day{font-size:13px}
   .day .badge-ab{font-size:9px; padding:2px 5px}

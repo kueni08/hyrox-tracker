@@ -3,24 +3,24 @@
 // Presets
 const PRESETS = {
   A:[
-    {n:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], t:"https://www.youtube.com/watch?v=v-mQm_droHg"},
-    {n:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], t:"https://www.youtube.com/watch?v=MBbyAqvTNkU"},
-    {n:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], t:"https://www.youtube.com/watch?v=vcBig73ojpE"},
-    {n:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], t:"https://www.youtube.com/watch?v=6GYxDJ9ee7I"},
-    {n:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], t:"https://www.youtube.com/watch?v=LM8XHLYJoYs"},
-    {n:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], t:"https://www.youtube.com/playlist?list=PLacPhVACI3MPUu-vCblBkHiGwYYYEQZnI"},
-    {n:"Rückenstrecker", sets:2, reps:[12,12], t:"https://www.youtube.com/watch?v=ph3pddpKzzw"},
-    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://www.youtube.com/watch?v=mGiKe6CYWss"}
+    {n:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/front-squat/"},
+    {n:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/kreuzheben/"},
+    {n:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+    {n:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], t:"https://modusx.de/fitness-uebungen/bulgarian-split-squat/"},
+    {n:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/hip-thrust/"},
+    {n:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/butterfly-maschine/"},
+    {n:"Rückenstrecker", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/rueckenstrecker/"},
+    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://modusx.de/fitness-uebungen/russian-twist/"}
   ],
   B:[
-    {n:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], t:"https://www.youtube.com/watch?v=vcBig73ojpE"},
-    {n:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], t:"https://www.youtube.com/watch?v=MBbyAqvTNkU"},
-    {n:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], t:"https://www.youtube.com/watch?v=bEv6CCg2BC8"},
-    {n:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], t:"https://www.youtube.com/watch?v=VXKfH6ciEBI"},
-    {n:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], t:"https://www.youtube.com/watch?v=7o2oolbmzeI"},
-    {n:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], t:"https://www.youtube.com/watch?v=_RlRDWO2jfg"},
-    {n:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], t:"https://www.youtube.com/watch?v=SgyUoY0IZ7A"},
-    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://www.youtube.com/watch?v=mGiKe6CYWss"}
+    {n:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+    {n:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/kreuzheben/"},
+    {n:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/kniebeuge/"},
+    {n:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/latzug/"},
+    {n:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/kabelrudern/"},
+    {n:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
+    {n:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/seitheben/"},
+    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://modusx.de/fitness-uebungen/russian-twist/"}
   ]
 };
 
@@ -35,6 +35,7 @@ const workoutSel = $('#workoutSel');
 const tabTracker = $('#tab-tracker');
 const tabOverview = $('#tab-overview');
 const tabActivities = $('#tab-activities');
+const calendarWeekdays = $('#calendarWeekdays');
 const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
 const importBtn = $('#importCsv');
@@ -298,6 +299,10 @@ function buildOverview(){
   const cal = document.getElementById('calendar'); const label = document.getElementById('monthLabel');
   if(!cal) return;
   cal.innerHTML='';
+  if(calendarWeekdays){
+    const weekdays=['Mo','Di','Mi','Do','Fr','Sa','So'];
+    calendarWeekdays.innerHTML = weekdays.map(d=>`<div>${d}</div>`).join('');
+  }
   const base = new Date(dateEl.value||todayISO());
   let y = base.getFullYear(), m = base.getMonth();
   renderCalendar(y,m);
