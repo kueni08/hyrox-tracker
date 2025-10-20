@@ -56,7 +56,7 @@ const SYNC_CACHE_KEY = 'athletx:sync:cache';
 // 1) JSONBin.io → Dashboard → API Keys → Master-Key kopieren (Klartext, KEIN $2a$… Hash)
 // 2) Unten einfügen:
 const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
-const JSONBIN_KEY  = '68f5efa3ae596e708f1eb4b0'; // <<< deinen echten Key einsetzen
+const JSONBIN_KEY  = '$2a$10$zd7toqqB2tT/1fHOPkM8eOKakeLywuyIyz3ME7usDeOYBeIjXba6a'; // <<< deinen echten Key einsetzen
 const BIN_HEADERS = {
   'Content-Type': 'application/json',
   'X-Master-Key': JSONBIN_KEY,
