@@ -34,11 +34,12 @@ const dateEl = $('#date');
 const workoutSel = $('#workoutSel');
 const tabTracker = $('#tab-tracker');
 const tabOverview = $('#tab-overview');
+const tabActivities = $('#tab-activities');
 const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
 
 // Autosave
-let dirty=false, autosaveTimer=null;
+let dirty=false, autosaveTimer=null, saveDebounce=null;
 
 // Timer
 let timerId=null, startTs=null;
@@ -56,7 +57,7 @@ let timerId=null, startTs=null;
 
 // Init
 dateEl.value = todayISO();
-renderTracker(); onLoadDay(); buildOverview(); drawChart();
+renderTracker(); onLoadDay(); buildOverview(); drawChart(); renderActivities();
 bindTabs(); bindControls(); setupAutosave(); setupTimerFromSession();
 
 // Tabs
@@ -65,25 +66,28 @@ function bindTabs(){
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     const tab = t.dataset.tab;
-    tabTracker.classList.toggle('hidden', tab!=='tracker');
-    tabOverview.classList.toggle('hidden', tab!=='overview');
+    const sections = { tracker: tabTracker, overview: tabOverview, activities: tabActivities };
+    Object.entries(sections).forEach(([name, el])=>{ if(el) el.classList.toggle('hidden', name!==tab); });
     if(tab==='overview'){ buildOverview(); drawChart(); }
+    if(tab==='activities'){ renderActivities(); }
   }));
 }
 
 function bindControls(){
   $('#save')?.addEventListener('click', ()=>saveDay(false));
   $('#export')?.addEventListener('click', onExportCSV);
-  $('#clear')?.addEventListener('click', onClearDay);
   themeToggle?.addEventListener('click', toggleTheme);
   timerBtn?.addEventListener('click', restartTimer);
   dateEl.addEventListener('change', ()=>{ onLoadDay(); buildOverview(); dirty=false; });
   workoutSel.addEventListener('change', ()=>{ renderTracker(); onLoadDay(); dirty=false; });
-  document.addEventListener('input', e=>{ if(e.target.matches('input')) { dirty=true; } });
+  document.addEventListener('input', e=>{ if(e.target.matches('input')) { markDirty(); } });
+  window.addEventListener('beforeunload', ()=>{ if(dirty){ saveDay(true); } });
 }
 
 // Autosave
-function setupAutosave(){ if(autosaveTimer) clearInterval(autosaveTimer); autosaveTimer=setInterval(()=>{ if(dirty){ saveDay(true); dirty=false; } },180000); }
+function setupAutosave(){ if(autosaveTimer) clearInterval(autosaveTimer); autosaveTimer=setInterval(()=>{ if(dirty){ saveDay(true); } },180000); }
+function markDirty(){ dirty=true; scheduleSave(); }
+function scheduleSave(){ if(saveDebounce) clearTimeout(saveDebounce); saveDebounce=setTimeout(()=>{ if(dirty){ saveDay(true); } }, 1200); }
 
 // Theme
 function toggleTheme(){
@@ -183,8 +187,11 @@ function collect(){
 }
 function saveDay(silent=true){
   localStorage.setItem(storageKey(), JSON.stringify(collect()));
+  dirty=false;
+  if(saveDebounce){ clearTimeout(saveDebounce); saveDebounce=null; }
   if(!silent) toast('Gespeichert');
-  if(!tabOverview.classList.contains('hidden')) buildOverview();
+  buildOverview();
+  renderActivities();
 }
 
 // Render tracker
@@ -234,10 +241,10 @@ function renderTracker(){
     const s = lastTopSet(exName);
     const row = tabTracker.querySelector(`.setgrid[data-idx='${idx}'][data-set='0']`);
     if(row){ row.querySelector(`[data-k='w']`).value = s||''; row.querySelector(`[data-k='sugg']`).value = s? (s+' kg'): ''; }
-    dirty=true; toast('Vorschlag gesetzt');
+    markDirty(); toast('Vorschlag gesetzt');
   }));
-  tabTracker.querySelectorAll('[data-act="addset"]').forEach(btn=>btn.addEventListener('click', ()=>{ addSetRow(+btn.dataset.idx); dirty=true; }));
-  tabTracker.querySelectorAll('[data-act="removeset"]').forEach(btn=>btn.addEventListener('click', ()=>{ removeLastSet(+btn.dataset.idx); dirty=true; }));
+  tabTracker.querySelectorAll('[data-act="addset"]').forEach(btn=>btn.addEventListener('click', ()=>{ addSetRow(+btn.dataset.idx); markDirty(); }));
+  tabTracker.querySelectorAll('[data-act="removeset"]').forEach(btn=>btn.addEventListener('click', ()=>{ removeLastSet(+btn.dataset.idx); markDirty(); }));
 }
 function addSetRow(idx){
   const card = document.getElementById(`card-${idx}`);
@@ -303,8 +310,10 @@ function buildOverview(){
   // Recaps
   computeRecaps(base);
 
-  document.getElementById('prevMonth')?.addEventListener('click', ()=>{ m--; while(m<0){m+=12;y--;} renderCalendar(y,m); });
-  document.getElementById('nextMonth')?.addEventListener('click', ()=>{ m++; while(m>11){m-=12;y++;} renderCalendar(y,m); });
+  const prevBtn=document.getElementById('prevMonth');
+  const nextBtn=document.getElementById('nextMonth');
+  if(prevBtn){ prevBtn.onclick=()=>{ m--; while(m<0){m+=12;y--;} renderCalendar(y,m); }; }
+  if(nextBtn){ nextBtn.onclick=()=>{ m++; while(m>11){m-=12;y++;} renderCalendar(y,m); }; }
 
   function renderCalendar(Y,M){
     cal.innerHTML='';
@@ -322,6 +331,66 @@ function buildOverview(){
       cal.appendChild(el);
     }
   }
+}
+
+// Activities view
+function renderActivities(){
+  const list=document.getElementById('activitiesList');
+  if(!list) return;
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('hyrox:'));
+  const entries=keys.map(k=>{
+    try{
+      const data=JSON.parse(localStorage.getItem(k)||'{}');
+      if(!data || !data.date) return null;
+      const summary=(data.rows||[]).reduce((acc,row)=>{
+        const sets=row.sets||[];
+        acc.exercises+=1;
+        acc.sets+=sets.length;
+        sets.forEach(s=>{ acc.volume+=(+s.w||0)*(+s.reps||0); });
+        return acc;
+      }, {exercises:0, sets:0, volume:0});
+      return {key:k, date:data.date, workout:data.workout||'', summary};
+    }catch(e){ return null; }
+  }).filter(Boolean).sort((a,b)=>{
+    if(a.date===b.date){ return a.workout.localeCompare(b.workout); }
+    return b.date.localeCompare(a.date);
+  });
+  if(!entries.length){
+    list.innerHTML='<div class="activities-empty">Noch keine Trainings gespeichert.</div>';
+    return;
+  }
+  const fmt=new Intl.DateTimeFormat('de-DE',{weekday:'short', day:'2-digit', month:'2-digit', year:'numeric'});
+  list.innerHTML=entries.map(e=>{
+    const date=new Date(e.date+'T00:00:00');
+    const dateTxt=isNaN(date.getTime())? e.date : fmt.format(date);
+    const workoutTxt=e.workout? `Training ${e.workout}` : 'Training';
+    const vol=Math.round(e.summary.volume);
+    const meta=`${e.summary.exercises} Übungen · ${e.summary.sets} Sätze`;
+    const volumeTxt=vol>0? `${vol} kg Volumen` : 'Kein Volumen erfasst';
+    return `<div class="activity-item" data-key="${e.key}">
+      <div class="activity-row">
+        <div class="activity-main">
+          <div><strong>${dateTxt}</strong> · ${workoutTxt}</div>
+          <div class="activity-meta">${meta}</div>
+        </div>
+        <div class="activity-volume">${volumeTxt}</div>
+        <div class="activity-actions">
+          <button class="btn danger" data-act="delete" data-key="${e.key}">Löschen</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('[data-act="delete"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>deleteActivity(btn.dataset.key));
+  });
+}
+function deleteActivity(key){
+  if(!key) return;
+  localStorage.removeItem(key);
+  toast('Training gelöscht');
+  renderActivities();
+  buildOverview();
+  onLoadDay();
 }
 function dayWorkoutBadge(iso){
   const a=localStorage.getItem(`hyrox:A:${iso}`); const b=localStorage.getItem(`hyrox:B:${iso}`);
@@ -478,9 +547,6 @@ function onExportCSV(){
   const blob=new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='hyrox_training_export.csv'; a.click(); URL.revokeObjectURL(a.href);
 }
-
-// Clear
-function onClearDay(){ localStorage.removeItem(storageKey()); renderTracker(); toast('Eintrag gelöscht'); buildOverview(); }
 
 // Toast
 function toast(msg){ const f=document.createElement('div'); f.className='flash'; f.textContent=msg; document.body.appendChild(f); setTimeout(()=>f.remove(), 1200); }
