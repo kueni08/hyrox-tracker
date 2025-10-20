@@ -20,6 +20,7 @@
       <nav class="tabs" id="tabs">
         <button class="tab active" data-tab="tracker">Training</button>
         <button class="tab" data-tab="overview">Übersicht</button>
+        <button class="tab" data-tab="activities">Aktivitäten</button>
       </nav>
       <div class="top-actions">
         <button id="timerBtn" class="btn timer" title="Timer starten/neu starten">⏱ 00:00</button>
@@ -40,7 +41,6 @@
       <div class="btnrow">
         <button id="save" class="btn">Speichern</button>
         <button id="export" class="btn ghost">Export CSV</button>
-        <button id="clear" class="btn danger">Löschen</button>
       </div>
       <button id="themeToggle" class="btn theme" title="Theme wechseln">🌙</button>
     </section>
@@ -95,6 +95,17 @@
             <div class="agg-item hint">Berechnet aus linearem Trend der Top‑Satz‑Gewichte (Ø aller ausgewählten Übungen, letzte 6 Wochen).</div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ACTIVITIES TAB -->
+    <section id="tab-activities" class="panel hidden">
+      <div class="activities">
+        <div class="activities-head">
+          <h2>Aktivitäten</h2>
+          <p class="hint">Hier findest du alle gespeicherten Trainings. Löschen ist nur hier möglich.</p>
+        </div>
+        <div id="activitiesList" class="activities-list"></div>
       </div>
     </section>
 
