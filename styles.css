@@ -68,6 +68,7 @@ body::before{
 .chip{display:inline-flex; align-items:center; gap:6px; background:var(--card); color:var(--muted);
   border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:12px}
 .chip input,.chip select{background:transparent;border:none;color:var(--text)}
+.chip select{min-width:140px}
 
 /* Buttons (klare Konturen) */
 .btnrow{display:flex;gap:8px;flex-wrap:wrap}
@@ -115,6 +116,7 @@ input[type=number]{appearance:textfield; text-align:center}
 .overview{display:grid; grid-template-columns:1fr; gap:12px}
 @media (min-width:900px){ .overview{grid-template-columns:360px 1fr} }
 .calendar-card,.chart-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; overflow:hidden}
+.chart-head{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 .calendar-card{overflow-x:auto; padding-bottom:14px; -webkit-overflow-scrolling:touch}
 .calendar-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:8px}
 .icon{background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:6px 10px; flex:0 0 auto}
@@ -189,6 +191,45 @@ input[type=number]{appearance:textfield; text-align:center}
   .sync-row{flex-direction:column; align-items:stretch}
   .sync-row input,.sync-row .btn{width:100%}
 }
+
+/* Workout manager */
+.workouts{display:flex; flex-direction:column; gap:12px}
+.workout-card{background:color-mix(in oklab, var(--surface) 94%, #000 6%); border:1px solid var(--border); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:10px}
+.workout-header{display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between}
+.workout-header .title{display:flex; flex-direction:column; gap:4px; min-width:160px}
+.workout-header input{font-weight:800; text-transform:uppercase}
+.workout-meta{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.workout-exercises{display:flex; flex-direction:column; gap:8px}
+.workout-exercise{display:grid; grid-template-columns:1fr repeat(4, minmax(60px, 90px)) auto; gap:6px; align-items:center}
+.workout-exercise input[type="text"],.workout-exercise input[type="number"],.workout-exercise input[type="search"]{width:100%}
+.workout-exercise .btnrow{justify-content:flex-end}
+.workout-actions{display:flex; gap:8px; flex-wrap:wrap}
+.workouts-actions{margin-top:12px; display:flex; justify-content:flex-end}
+.workouts-actions .btn{padding:8px 16px}
+
+@media (max-width:720px){
+  .workout-exercise{grid-template-columns:1fr; grid-auto-rows:auto}
+  .workout-exercise input{width:100%}
+  .workout-exercise .btnrow{grid-column:1 / -1; justify-content:flex-start}
+}
+
+/* Modal */
+.modal{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:30}
+.modal.hidden{display:none}
+.modal-backdrop{position:absolute; inset:0; background:rgba(0,0,0,.6)}
+.modal-content{position:relative; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; max-width:720px; width:90%; max-height:90vh; overflow:auto; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px}
+.modal-close{position:absolute; top:10px; right:12px; background:transparent; border:none; color:var(--text); font-size:24px; cursor:pointer}
+.detail-body{display:flex; flex-direction:column; gap:12px}
+.detail-head{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.detail-sets{display:flex; flex-direction:column; gap:10px}
+.detail-card{background:color-mix(in oklab, var(--surface) 94%, #000 6%); border:1px solid var(--border); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px}
+.detail-card h4{margin:0; font-size:15px}
+.detail-card h4 input{width:100%; font-weight:700; text-transform:none}
+.detail-setgrid{display:grid; grid-template-columns:40px repeat(3, minmax(60px, 1fr)) auto; gap:6px; align-items:center}
+.detail-setgrid button{padding:6px 10px}
+.detail-setgrid input{width:100%}
+.detail-actions{display:flex; justify-content:flex-end; gap:8px}
+.detail-empty{color:var(--muted); font-size:13px; text-align:center}
 
 /* Utility: Street‑Outline für Headlines/Badges */
 .outline-strong{ text-shadow: 0 1px 0 rgba(0,0,0,.8), 0 0 10px rgba(245,230,27,.25); }

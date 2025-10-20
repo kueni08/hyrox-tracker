@@ -1,32 +1,110 @@
 // ===== AthlētX HYROX Tracker – v5.2 (PWA + Multi-Chart + Recap) =====
 (() => {
-// Presets
-const PRESETS = {
-  A:[
-    {n:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/front-squat/"},
-    {n:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], t:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
-    {n:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
-    {n:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], t:"https://modusx.de/fitness-uebungen/bulgarian-split-squat/"},
-    {n:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/hip-thrust/"},
-    {n:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/butterfly-an-maschine/"},
-    {n:"Rückenstrecker", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/rueckenstrecken-am-geraet/rueckenstrecken-an-der-rueckenstrecker-maschine/"},
-    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://modusx.de/fitness-uebungen/russian-twist/"}
-  ],
-  B:[
-    {n:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], t:"https://modusx.de/fitness-uebungen/bankdruecken/"},
-    {n:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
-    {n:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/kniebeuge/"},
-    {n:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/latzug/"},
-    {n:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], t:"https://modusx.de/fitness-uebungen/kabelrudern/"},
-    {n:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], t:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
-    {n:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], t:"https://modusx.de/fitness-uebungen/seitheben/"},
-    {n:"Russian Twists (gesamt)", sets:2, reps:[20,20], t:"https://modusx.de/fitness-uebungen/russian-twist/"}
-  ]
+// Presets & Bibliothek
+const EXERCISE_LIBRARY = [
+  "Front Squat / Hack Squat",
+  "Kreuzheben (konventionell)",
+  "Bankdrücken (schwer)",
+  "Bankdrücken (leicht/mittelschwer)",
+  "Bulgarian Split Squat (pro Bein)",
+  "Beinbeuger / Glute Drive",
+  "Brustfliegende (Kabel/Maschine)",
+  "Rückenstrecker",
+  "Russian Twists (gesamt)",
+  "Kreuzheben (Volumen/Technik)",
+  "Kniebeugen (Maschine/LH)",
+  "Latzug (neutraler Griff)",
+  "Kabelrudern (enger Griff)",
+  "Schulterdrücken (Maschine/KH)",
+  "Seitheben (Kabel/KH)",
+  "Hip Thrust",
+  "Ausfallschritte",
+  "Overhead Press",
+  "Bicep Curls",
+  "Trizepsdrücken (Seil)",
+  "Rudern vorgebeugt",
+  "Klimmzüge",
+  "Beinpresse",
+  "Leg Curl",
+  "Wadenheben",
+  "Face Pulls",
+  "Core Rotation",
+  "Farmer's Carry",
+  "Sandbag Lunges",
+  "Burpee Broad Jumps",
+  "SkiErg 1000 m",
+  "RowErg 1000 m",
+  "Air Bike",
+  "Schlitten Push",
+  "Schlitten Pull",
+  "Wall Balls",
+  "Kettlebell Swings",
+  "Box Jumps",
+  "Hand Release Push-Ups",
+  "Plank Hold",
+  "Side Plank",
+  "Sit-ups",
+  "Mountain Climbers",
+  "Lunges (Bodyweight)",
+  "Jumping Lunges",
+  "Sprint Intervalls",
+  "Double Unders",
+  "Battle Ropes",
+  "Bear Crawl"
+];
+
+const DEFAULT_WORKOUTS = {
+  version: 1,
+  order: ['A','B'],
+  map: {
+    A: {
+      id: 'A',
+      label: 'Training A',
+      name: 'Workout A',
+      exercises: [
+        {name:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/front-squat/"},
+        {name:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
+        {name:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], technique:"https://modusx.de/fitness-uebungen/bulgarian-split-squat/"},
+        {name:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
+        {name:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/butterfly-an-maschine/"},
+        {name:"Rückenstrecker", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/rueckenstrecken-am-geraet/rueckenstrecken-an-der-rueckenstrecker-maschine/"},
+        {name:"Russian Twists (gesamt)", sets:2, reps:[20,20], technique:"https://modusx.de/fitness-uebungen/russian-twist/"}
+      ]
+    },
+    B: {
+      id: 'B',
+      label: 'Training B',
+      name: 'Workout B',
+      exercises: [
+        {name:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
+        {name:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/kniebeuge/"},
+        {name:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/latzug/"},
+        {name:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/kabelrudern/"},
+        {name:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
+        {name:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
+        {name:"Russian Twists (gesamt)", sets:2, reps:[20,20], technique:"https://modusx.de/fitness-uebungen/russian-twist/"}
+      ]
+    }
+  }
 };
 
 // Helpers
 const $ = s=>document.querySelector(s);
-const todayISO = ()=>new Date().toISOString().slice(0,10);
+const toLocalISO = (date)=>{
+  const tzOffset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - tzOffset*60000);
+  return local.toISOString().slice(0,10);
+};
+const todayISO = ()=>toLocalISO(new Date());
+const escapeHtml = (str='')=>String(str).replace(/[&<>"']/g,c=>({
+  '&':'&amp;',
+  '<':'&lt;',
+  '>':'&gt;',
+  '"':'&quot;',
+  "'":'&#39;'
+}[c]||c));
 const cssVar = (name)=>getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#94a3b8';
 
 // Elements
@@ -35,11 +113,18 @@ const workoutSel = $('#workoutSel');
 const tabTracker = $('#tab-tracker');
 const tabOverview = $('#tab-overview');
 const tabActivities = $('#tab-activities');
+const tabWorkouts = $('#tab-workouts');
 const calendarWeekdays = $('#calendarWeekdays');
 const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
 const importBtn = $('#importCsv');
 const importInput = $('#importCsvFile');
+const statRangeSel = $('#statRange');
+const addWorkoutBtn = $('#addWorkout');
+const workoutManager = $('#workoutManager');
+const exerciseLibraryEl = $('#exerciseLibrary');
+const activityDetail = $('#activityDetail');
+const activityDetailBody = $('#activityDetailBody');
 const syncCodeDisplay = $('#syncCodeDisplay');
 const syncCopyBtn = $('#syncCopy');
 const syncApplyBtn = $('#syncApply');
@@ -49,6 +134,7 @@ const syncStatusEl = $('#syncStatus');
 const syncRefreshBtn = $('#syncRefresh');
 
 const STORAGE_PREFIX = 'hyrox:';
+const WORKOUTS_CONFIG_KEY = `${STORAGE_PREFIX}cfg:workouts`;
 const SYNC_ID_KEY = 'athletx:sync:id';
 const SYNC_CACHE_KEY = 'athletx:sync:cache';
 
@@ -67,6 +153,296 @@ let remoteData = loadCachedRemoteData();
 let remoteSaveTimer = null;
 let remoteSaving = false;
 let remoteSavePending = false;
+
+let workoutsState = normalizeWorkouts(loadWorkoutsConfig());
+let activeDetailKey = null;
+let activeDetailState = null;
+
+function loadWorkoutsConfig(){
+  const stored = getConfigRecord(WORKOUTS_CONFIG_KEY);
+  if(stored && stored.map){ return stored; }
+  return DEFAULT_WORKOUTS;
+}
+
+function normalizeWorkouts(raw){
+  const base = raw && typeof raw==='object' ? raw : {};
+  const resultOrder = [];
+  const resultMap = {};
+  const seen = new Set();
+  const sourceOrder = Array.isArray(base.order) && base.order.length ? base.order.slice() : DEFAULT_WORKOUTS.order.slice();
+  const appendWorkout = (id, data)=>{
+    if(!data) return;
+    const normalized = {
+      id: data.id || id,
+      label: (data.label || data.name || `Workout ${id}`).trim() || `Workout ${id}`,
+      name: (data.name || data.label || `Workout ${id}`).trim() || `Workout ${id}`,
+      exercises: normalizeExercises(data.exercises)
+    };
+    const key = normalized.id;
+    if(seen.has(key)) return;
+    seen.add(key);
+    resultMap[key] = normalized;
+    resultOrder.push(key);
+  };
+  sourceOrder.forEach(id=>{ appendWorkout(id, base.map?.[id] || DEFAULT_WORKOUTS.map[id]); });
+  Object.keys(base.map||{}).forEach(id=>{ appendWorkout(id, base.map[id]); });
+  DEFAULT_WORKOUTS.order.forEach(id=>{ if(!seen.has(id)){ appendWorkout(id, DEFAULT_WORKOUTS.map[id]); } });
+  return { version:1, order: resultOrder, map: resultMap };
+}
+
+function normalizeExercises(arr){
+  const list = Array.isArray(arr)? arr : [];
+  return list.map(ex=>{
+    const repsArray = toRepArray(ex?.reps);
+    return {
+      name: (ex?.name || ex?.n || '').trim(),
+      sets: normalizeSets(ex?.sets, repsArray.length),
+      reps: repsArray,
+      technique: (ex?.technique || ex?.t || '').trim()
+    };
+  });
+}
+
+function toRepArray(value){
+  if(Array.isArray(value)){ return value.map(v=>parseInt(v,10)).filter(v=>!isNaN(v)); }
+  if(typeof value==='number'){ return [Math.round(value)]; }
+  if(typeof value==='string'){ return value.split(/[,;\s]+/).map(v=>parseInt(v.trim(),10)).filter(v=>!isNaN(v)); }
+  return [];
+}
+
+function normalizeSets(sets, repsLen){
+  const parsed = parseInt(sets,10);
+  if(!isNaN(parsed) && parsed>0){ return parsed; }
+  if(repsLen>0){ return repsLen; }
+  return 3;
+}
+
+function serializeWorkouts(state){
+  const payload={ version:1, order:[], map:{} };
+  (state?.order||[]).forEach(id=>{
+    const workout = state?.map?.[id];
+    if(!workout) return;
+    payload.order.push(id);
+    payload.map[id] = {
+      id: workout.id,
+      label: workout.label,
+      name: workout.name,
+      exercises: (workout.exercises||[]).map(ex=>({
+        name: ex.name,
+        sets: ex.sets,
+        reps: Array.isArray(ex.reps)? ex.reps.slice() : [],
+        technique: ex.technique||''
+      }))
+    };
+  });
+  return payload;
+}
+
+function getWorkout(id){
+  if(!id) return null;
+  return workoutsState.map?.[id] || null;
+}
+
+function getWorkoutExercises(id){
+  return getWorkout(id)?.exercises || [];
+}
+
+function ensureWorkoutSelection(){
+  if(!workoutSel) return;
+  if(!getWorkout(workoutSel.value)){
+    workoutSel.value = workoutsState.order[0] || '';
+  }
+}
+
+function renderWorkoutSelector(){
+  if(!workoutSel) return;
+  const prev = workoutSel.value;
+  workoutSel.innerHTML = (workoutsState.order||[]).map(id=>{
+    const workout = workoutsState.map?.[id];
+    const label = workout?.label || `Workout ${id}`;
+    return `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`;
+  }).join('');
+  if(prev && getWorkout(prev)){ workoutSel.value = prev; }
+  else{ ensureWorkoutSelection(); }
+}
+
+function renderExerciseLibrary(){
+  if(!exerciseLibraryEl) return;
+  const names = new Set(EXERCISE_LIBRARY);
+  (workoutsState.order||[]).forEach(id=>{
+    getWorkoutExercises(id).forEach(ex=>{ if(ex.name) names.add(ex.name); });
+  });
+  sessionEntries().forEach(({data})=>{
+    (data?.rows||[]).forEach(row=>{ if(row?.name) names.add(row.name); });
+  });
+  const sorted=[...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'de',{sensitivity:'base'}));
+  exerciseLibraryEl.innerHTML = sorted.map(name=>`<option value="${escapeHtml(name)}"></option>`).join('');
+}
+
+function saveWorkoutsState(){
+  const serialized = serializeWorkouts(workoutsState);
+  setConfigRecord(WORKOUTS_CONFIG_KEY, serialized);
+  renderWorkoutSelector();
+  renderExerciseLibrary();
+  renderWorkoutManager();
+  ensureWorkoutSelection();
+  renderTracker();
+  onLoadDay();
+  buildOverview();
+  drawChart();
+}
+
+function reloadWorkoutsFromStorage(){
+  workoutsState = normalizeWorkouts(loadWorkoutsConfig());
+  renderWorkoutSelector();
+  renderExerciseLibrary();
+  renderWorkoutManager();
+  ensureWorkoutSelection();
+}
+
+function renderWorkoutManager(){
+  if(!workoutManager) return;
+  if(!workoutsState.order?.length){
+    workoutManager.innerHTML = '<div class="activities-empty">Noch keine Workouts angelegt.</div>';
+    return;
+  }
+  workoutManager.innerHTML = workoutsState.order.map((id, idx)=>{
+    const workout = getWorkout(id);
+    if(!workout) return '';
+    const exercisesHtml = (workout.exercises||[]).map((ex, exIdx)=>{
+      const repsStr = Array.isArray(ex.reps)? ex.reps.join(',') : '';
+      return `<div class="workout-exercise" data-workout="${escapeHtml(id)}" data-idx="${exIdx}">
+        <input type="text" list="exerciseLibrary" data-field="exercise-name" value="${escapeHtml(ex.name||'')}" placeholder="Übung auswählen" />
+        <input type="number" min="1" data-field="exercise-sets" value="${ex.sets||1}" />
+        <input type="text" data-field="exercise-reps" value="${escapeHtml(repsStr)}" placeholder="Wdh. z.B. 8,8,8" />
+        <input type="text" data-field="exercise-technique" value="${escapeHtml(ex.technique||'')}" placeholder="Technik-Link" />
+        <div class="btnrow">
+          <button class="btn ghost" data-action="move-ex-up" title="Übung nach oben">▲</button>
+          <button class="btn ghost" data-action="move-ex-down" title="Übung nach unten">▼</button>
+          <button class="btn ghost danger" data-action="remove-ex" title="Übung entfernen">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    const body = exercisesHtml || '<div class="detail-empty">Noch keine Übungen – füge über "+ Übung" hinzu.</div>';
+    const upDisabled = idx===0 ? 'disabled' : '';
+    const downDisabled = idx===workoutsState.order.length-1 ? 'disabled' : '';
+    const deleteBtn = (id==='A' || id==='B') ? '' : '<button class="btn ghost danger" data-action="delete-workout">Löschen</button>';
+    return `<div class="workout-card" data-workout="${escapeHtml(id)}">
+      <div class="workout-header">
+        <div class="title">
+          <label class="hint" for="workout-${escapeHtml(id)}">Bezeichnung</label>
+          <input id="workout-${escapeHtml(id)}" type="text" data-field="label" value="${escapeHtml(workout.label||'')}" placeholder="Workout-Name" />
+        </div>
+        <div class="workout-meta">
+          <button class="btn ghost" data-action="move-workout-up" ${upDisabled} title="Workout nach oben">▲</button>
+          <button class="btn ghost" data-action="move-workout-down" ${downDisabled} title="Workout nach unten">▼</button>
+          <button class="btn ghost" data-action="add-exercise">+ Übung</button>
+          ${deleteBtn}
+        </div>
+      </div>
+      <div class="workout-exercises">${body}</div>
+    </div>`;
+  }).join('');
+}
+
+function setupWorkoutManagerEvents(){
+  if(!workoutManager || workoutManager.dataset.bound) return;
+  workoutManager.dataset.bound='1';
+  workoutManager.addEventListener('change', onWorkoutManagerChange);
+  workoutManager.addEventListener('click', onWorkoutManagerClick);
+}
+
+function onWorkoutManagerChange(evt){
+  const target = evt.target;
+  const card = target.closest('.workout-card');
+  if(!card) return;
+  const workoutId = card.dataset.workout;
+  const workout = getWorkout(workoutId);
+  if(!workout) return;
+  const exEl = target.closest('.workout-exercise');
+  const field = target.dataset.field;
+  if(field==='label'){
+    const nextLabel = target.value.trim();
+    workout.label = nextLabel || workout.label || `Workout ${workout.id}`;
+    saveWorkoutsState();
+    return;
+  }
+  if(!exEl) return;
+  const idx = parseInt(exEl.dataset.idx,10);
+  if(isNaN(idx) || !workout.exercises[idx]) return;
+  if(field==='exercise-name'){ workout.exercises[idx].name = target.value.trim(); }
+  if(field==='exercise-sets'){ workout.exercises[idx].sets = Math.max(1, parseInt(target.value,10)||1); }
+  if(field==='exercise-reps'){ workout.exercises[idx].reps = toRepArray(target.value); }
+  if(field==='exercise-technique'){ workout.exercises[idx].technique = target.value.trim(); }
+  saveWorkoutsState();
+}
+
+function onWorkoutManagerClick(evt){
+  const action = evt.target?.dataset?.action;
+  if(!action) return;
+  evt.preventDefault();
+  const card = evt.target.closest('.workout-card');
+  if(!card) return;
+  const workoutId = card.dataset.workout;
+  const workout = getWorkout(workoutId);
+  if(!workout) return;
+  if(action==='add-exercise'){
+    workout.exercises.push({ name:'', sets:3, reps:[], technique:'' });
+    saveWorkoutsState();
+    return;
+  }
+  if(action==='delete-workout'){
+    if(workoutId==='A' || workoutId==='B') return;
+    workoutsState.order = workoutsState.order.filter(id=>id!==workoutId);
+    delete workoutsState.map[workoutId];
+    saveWorkoutsState();
+    return;
+  }
+  if(action==='move-workout-up' || action==='move-workout-down'){
+    const idx = workoutsState.order.indexOf(workoutId);
+    if(idx<0) return;
+    const dir = action==='move-workout-up' ? -1 : 1;
+    const swapIdx = idx + dir;
+    if(swapIdx<0 || swapIdx>=workoutsState.order.length) return;
+    const tmp = workoutsState.order[idx];
+    workoutsState.order[idx] = workoutsState.order[swapIdx];
+    workoutsState.order[swapIdx] = tmp;
+    saveWorkoutsState();
+    return;
+  }
+  const exEl = evt.target.closest('.workout-exercise');
+  if(!exEl) return;
+  const idx = parseInt(exEl.dataset.idx,10);
+  if(isNaN(idx) || !workout.exercises[idx]) return;
+  if(action==='remove-ex'){
+    workout.exercises.splice(idx,1);
+    saveWorkoutsState();
+    return;
+  }
+  if(action==='move-ex-up' || action==='move-ex-down'){
+    const dir = action==='move-ex-up' ? -1 : 1;
+    const swapIdx = idx + dir;
+    if(swapIdx<0 || swapIdx>=workout.exercises.length) return;
+    const tmp = workout.exercises[idx];
+    workout.exercises[idx] = workout.exercises[swapIdx];
+    workout.exercises[swapIdx] = tmp;
+    saveWorkoutsState();
+  }
+}
+
+function createNewWorkout(){
+  const idBase = `W${Date.now().toString(36)}`;
+  let id = idBase;
+  let counter = 1;
+  while(workoutsState.map[id]){ id = `${idBase}-${counter++}`; }
+  const label = `Workout ${workoutsState.order.length+1}`;
+  workoutsState.order.push(id);
+  workoutsState.map[id] = { id, label, name: label, exercises: [] };
+  saveWorkoutsState();
+  workoutSel.value = id;
+  renderTracker();
+  onLoadDay();
+}
 
 // Autosave
 let dirty=false, autosaveTimer=null, saveDebounce=null;
@@ -87,7 +463,17 @@ let timerId=null, startTs=null;
 
 // Init
 async function boot(){
-  dateEl.value = todayISO();
+  const today = todayISO();
+  if(dateEl){
+    dateEl.value = today;
+    dateEl.min = today;
+    dateEl.max = today;
+  }
+  renderWorkoutSelector();
+  renderExerciseLibrary();
+  renderWorkoutManager();
+  setupWorkoutManagerEvents();
+  ensureWorkoutSelection();
   bindTabs();
   bindControls();
   setupAutosave();
@@ -98,6 +484,9 @@ async function boot(){
     console.error('Initial sync failed', err);
     updateSyncStatus('Sync offline – nutze lokale Daten','warning');
   }
+  reloadWorkoutsFromStorage();
+  ensureWorkoutSelection();
+  renderTracker();
   onLoadDay();
   buildOverview();
   drawChart();
@@ -111,10 +500,11 @@ function bindTabs(){
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     const tab = t.dataset.tab;
-    const sections = { tracker: tabTracker, overview: tabOverview, activities: tabActivities };
+    const sections = { tracker: tabTracker, overview: tabOverview, activities: tabActivities, workouts: tabWorkouts };
     Object.entries(sections).forEach(([name, el])=>{ if(el) el.classList.toggle('hidden', name!==tab); });
     if(tab==='overview'){ buildOverview(); drawChart(); }
     if(tab==='activities'){ renderActivities(); }
+    if(tab==='workouts'){ renderWorkoutManager(); }
   }));
 }
 
@@ -135,9 +525,37 @@ function bindControls(){
   });
   themeToggle?.addEventListener('click', toggleTheme);
   timerBtn?.addEventListener('click', restartTimer);
-  dateEl.addEventListener('change', ()=>{ onLoadDay(); buildOverview(); dirty=false; });
-  workoutSel.addEventListener('change', ()=>{ renderTracker(); onLoadDay(); dirty=false; });
-  document.addEventListener('input', e=>{ if(e.target.matches('input')) { markDirty(); } });
+  if(dateEl){
+    dateEl.addEventListener('change', ()=>{
+      const today = todayISO();
+      if(dateEl.value !== today){ dateEl.value = today; }
+      onLoadDay();
+      buildOverview();
+      dirty=false;
+    });
+    dateEl.addEventListener('keydown', e=>{ e.preventDefault(); });
+    dateEl.addEventListener('input', ()=>{
+      const today = todayISO();
+      if(dateEl.value !== today){ dateEl.value = today; }
+    });
+  }
+  workoutSel.addEventListener('change', ()=>{ ensureWorkoutSelection(); renderTracker(); onLoadDay(); dirty=false; });
+  statRangeSel?.addEventListener('change', ()=>{ drawChart(); });
+  addWorkoutBtn?.addEventListener('click', ()=>{ createNewWorkout(); });
+  document.querySelectorAll('[data-close="activityDetail"]').forEach(btn=>{
+    btn.addEventListener('click', closeActivityDetail);
+  });
+  activityDetail?.addEventListener('click', evt=>{
+    if(evt.target?.dataset?.close==='activityDetail'){ closeActivityDetail(); }
+  });
+  window.addEventListener('keydown', evt=>{
+    if(evt.key==='Escape'){ closeActivityDetail(); }
+  });
+  document.addEventListener('input', e=>{
+    if(e.target.matches('input') && e.target.closest('#tab-tracker')) {
+      markDirty();
+    }
+  });
   window.addEventListener('beforeunload', ()=>{ if(dirty){ saveDay(true); } });
 }
 
@@ -246,14 +664,36 @@ function applyLocalSnapshot(snapshot){
   persistRemoteCache();
 }
 
+function isTrainingKey(key){
+  if(!key || !key.startsWith(STORAGE_PREFIX)) return false;
+  const rest = key.slice(STORAGE_PREFIX.length);
+  const parts = rest.split(':');
+  if(parts.length!==2) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(parts[1]);
+}
+
 function sessionKeys(){
   return Object.keys(remoteData||{}).filter(key=>{
+    if(!isTrainingKey(key)) return false;
     const rec=remoteData[key];
     return rec && typeof rec==='object' && !rec.deletedAt;
   });
 }
 
 function getSession(key){
+  if(!isTrainingKey(key)) return null;
+  const rec = remoteData?.[key];
+  if(rec && !rec.deletedAt) return rec;
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(parsed && !parsed.deletedAt) return parsed;
+  }catch(e){}
+  return null;
+}
+
+function getConfigRecord(key){
   const rec = remoteData?.[key];
   if(rec && !rec.deletedAt) return rec;
   try{
@@ -367,6 +807,8 @@ async function refreshRemoteSnapshot(silent){
     applyLocalSnapshot(remoteData);
     updateSyncStatus('Synchronisiert','success');
     if(!silent){
+      reloadWorkoutsFromStorage();
+      ensureWorkoutSelection();
       renderTracker();
       onLoadDay();
       buildOverview();
@@ -404,6 +846,8 @@ async function connectToSyncCode(code){
     updateSyncCodeDisplay();
     updateSyncStatus('Sync verbunden','success');
     syncInput && (syncInput.value='');
+    reloadWorkoutsFromStorage();
+    ensureWorkoutSelection();
     renderTracker();
     onLoadDay();
     buildOverview();
@@ -484,12 +928,21 @@ async function updateRemoteSnapshot(id, snapshot){
   return true;
 }
 
-function setSessionRecord(key, session){
-  const record = {...session, updatedAt: Date.now()};
+function writeRecord(key, payload){
+  const record = {...payload, updatedAt: Date.now()};
   remoteData[key] = record;
   localStorage.setItem(key, JSON.stringify(record));
   persistRemoteCache();
   scheduleRemoteSave();
+  return record;
+}
+
+function setSessionRecord(key, session){
+  writeRecord(key, session);
+}
+
+function setConfigRecord(key, value){
+  writeRecord(key, value);
 }
 
 function removeSessionRecord(key){
@@ -615,20 +1068,22 @@ function lastTopSet(exName){
 // Collect/Save
 function collect(){
   const day={date:dateEl.value, workout:workoutSel.value, rows:[]};
-  PRESETS[workoutSel.value].forEach((ex,idx)=>{
+  getWorkoutExercises(workoutSel.value).forEach((ex,idx)=>{
     const rows=document.querySelectorAll(`.setgrid[data-idx='${idx}']`);
     const sets=[];
     rows.forEach(g=>{
       const get=k=>g.querySelector(`[data-k='${k}']`)?.value||'';
       sets.push({w:+get('w')||0, reps:+get('reps')||0, rpe:+get('rpe')||0});
     });
-    day.rows.push({name:ex.n, sets});
+    day.rows.push({name:ex.name, sets});
   });
   return day;
 }
 function saveDay(silent=true){
-  setSessionRecord(storageKey(), collect());
-  localStorage.setItem(storageKey(), JSON.stringify(collect()));
+  const data = collect();
+  const key = storageKey();
+  setSessionRecord(key, data);
+  removeOtherSessionsForDate(data.date, key);
   dirty=false;
   if(saveDebounce){ clearTimeout(saveDebounce); saveDebounce=null; }
   if(!silent) toast('Gespeichert');
@@ -638,17 +1093,21 @@ function saveDay(silent=true){
 
 // Render tracker
 function renderTracker(){
-  const def = PRESETS[workoutSel.value];
+  const exercises = getWorkoutExercises(workoutSel.value);
+  if(!exercises.length){
+    tabTracker.innerHTML = '<div class="activities-empty">Bitte füge diesem Workout zuerst Übungen hinzu.</div>';
+    return;
+  }
   let html='';
-  def.forEach((ex,idx)=>{
-    const last = lastSetsFor(ex.n);
-    const setCount = Math.max(ex.sets, last? last.length : ex.sets);
+  exercises.forEach((ex,idx)=>{
+    const last = lastSetsFor(ex.name);
+    const setCount = Math.max(ex.sets||1, last? last.length : (ex.sets||1));
     html += `<div class="card" id="card-${idx}">
       <div class="exercise-head">
-        <div class="pill">${idx+1}. ${ex.n}</div>
+        <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
         <div class="btnrow">
           <button class="btn ghost" data-act="suggest" data-idx="${idx}">Vorschläge aktualisieren</button>
-          ${ex.t ? `<a class="btn ghost" href="${ex.t}" target="_blank" rel="noopener">Technik</a>`:``}
+          ${ex.technique ? `<a class="btn ghost" href="${escapeHtml(ex.technique)}" target="_blank" rel="noopener">Technik</a>`:``}
           <button class="btn" data-act="addset" data-idx="${idx}">+ Satz</button>
           <button class="btn ghost" data-act="removeset" data-idx="${idx}">− Satz</button>
         </div>
@@ -665,7 +1124,7 @@ function renderTracker(){
       const histSet = recentSets[s] ?? null;
       const fallbackSet = recentSets[recentSets.length-1] ?? null;
       const baseReps = Array.isArray(ex.reps) ? (ex.reps[s] ?? ex.reps[ex.reps.length-1] ?? '') : '';
-      const sugg = histSet?.w ?? lastTopSet(ex.n);
+      const sugg = histSet?.w ?? lastTopSet(ex.name);
       const weightVal = histSet?.w ?? (sugg ?? '');
       const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
       const rpeVal = histSet?.rpe ?? '';
@@ -683,9 +1142,10 @@ function renderTracker(){
 
   tabTracker.querySelectorAll('[data-act="suggest"]').forEach(btn=>btn.addEventListener('click', ()=>{
     const idx=+btn.dataset.idx;
-    const ex = PRESETS[workoutSel.value][idx];
-    const last = lastSetsFor(ex.n) || [];
-    const top = lastTopSet(ex.n);
+    const ex = getWorkoutExercises(workoutSel.value)[idx];
+    if(!ex) return;
+    const last = lastSetsFor(ex.name) || [];
+    const top = lastTopSet(ex.name);
     tabTracker.querySelectorAll(`.setgrid[data-idx='${idx}']`).forEach((row, setIdx)=>{
       const histSet = last[setIdx] ?? null;
       const sugg = histSet?.w ?? top;
@@ -699,15 +1159,16 @@ function renderTracker(){
 }
 function addSetRow(idx){
   const card = document.getElementById(`card-${idx}`);
-  const ex = PRESETS[workoutSel.value][idx];
+  const ex = getWorkoutExercises(workoutSel.value)[idx];
+  if(!card || !ex) return;
   const rows = card.querySelectorAll(`.setgrid[data-idx='${idx}']`);
   const s = rows.length;
-  const last = lastSetsFor(ex.n);
+  const last = lastSetsFor(ex.name);
   const recentSets = last || [];
   const histSet = recentSets[s] ?? null;
   const fallbackSet = recentSets[recentSets.length-1] ?? null;
   const baseReps = Array.isArray(ex.reps) ? (ex.reps[s] ?? ex.reps[ex.reps.length-1] ?? '') : '';
-  const sugg = histSet?.w ?? lastTopSet(ex.n);
+  const sugg = histSet?.w ?? lastTopSet(ex.name);
   const weightVal = histSet?.w ?? (sugg ?? '');
   const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
   const rpeVal = histSet?.rpe ?? '';
@@ -763,9 +1224,12 @@ function buildOverview(){
   // Multi select list
   const exSel = document.getElementById('exSelect');
   if(exSel){
-    const names = new Set(); Object.values(PRESETS).flat().forEach(x=>names.add(x.n));
+    const names = new Set();
+    (workoutsState.order||[]).forEach(id=>{
+      getWorkoutExercises(id).forEach(x=>names.add(x.name));
+    });
     const arr=[...names];
-    exSel.innerHTML = arr.map(n=>`<option value="${n}">${n}</option>`).join('');
+    exSel.innerHTML = arr.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
     exSel.onchange = ()=>{ drawChart(); };
   }
 
@@ -785,7 +1249,7 @@ function buildOverview(){
     const days=new Date(Y,M+1,0).getDate();
     for(let i=0;i<startW;i++) cal.appendChild(dayCell('',null));
     for(let d=1; d<=days; d++){
-      const iso=new Date(Y,M,d).toISOString().slice(0,10);
+      const iso=toLocalISO(new Date(Y,M,d));
       const badge=dayWorkoutBadge(iso);
       const el=dayCell(d,badge);
       if(iso===dateEl.value) el.classList.add('active');
@@ -833,6 +1297,7 @@ function renderActivities(){
         </div>
         <div class="activity-volume">${volumeTxt}</div>
         <div class="activity-actions">
+          <button class="btn ghost" data-act="detail" data-key="${e.key}">Details</button>
           <button class="btn danger" data-act="delete" data-key="${e.key}">Löschen</button>
         </div>
       </div>
@@ -841,14 +1306,217 @@ function renderActivities(){
   list.querySelectorAll('[data-act="delete"]').forEach(btn=>{
     btn.addEventListener('click', ()=>deleteActivity(btn.dataset.key));
   });
+  list.querySelectorAll('[data-act="detail"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openActivityDetail(btn.dataset.key));
+  });
 }
 function deleteActivity(key){
   if(!key) return;
   removeSessionRecord(key);
   toast('Training gelöscht');
+  if(activeDetailKey===key){ closeActivityDetail(); }
   renderActivities();
   buildOverview();
   onLoadDay();
+}
+
+function removeOtherSessionsForDate(date, keepKey){
+  sessionEntries().forEach(({key,data})=>{
+    if(key===keepKey) return;
+    if(data?.date===date){
+      removeSessionRecord(key);
+    }
+  });
+}
+
+function normalizeDetailState(session){
+  const fallbackWorkout = getWorkout(session?.workout) ? session.workout : (workoutsState.order[0]||'');
+  return {
+    date: session?.date || todayISO(),
+    workout: fallbackWorkout,
+    rows: (session?.rows||[]).map(row=>({
+      name: row?.name || '',
+      sets: (row?.sets||[]).map(set=>({
+        w: +set?.w || 0,
+        reps: +set?.reps || 0,
+        rpe: +set?.rpe || 0
+      }))
+    }))
+  };
+}
+
+function openActivityDetail(key){
+  if(!activityDetail || !activityDetailBody) return;
+  const session = getSession(key);
+  if(!session){ toast('Training nicht gefunden'); return; }
+  activeDetailKey = key;
+  activeDetailState = normalizeDetailState(session);
+  renderExerciseLibrary();
+  renderActivityDetail();
+  setupActivityDetailEvents();
+  activityDetail.classList.remove('hidden');
+}
+
+function closeActivityDetail(){
+  if(!activityDetail) return;
+  activityDetail.classList.add('hidden');
+  activeDetailKey = null;
+  activeDetailState = null;
+}
+
+function renderActivityDetail(){
+  if(!activityDetailBody) return;
+  if(!activeDetailState){
+    activityDetailBody.innerHTML = '<div class="detail-empty">Kein Training ausgewählt.</div>';
+    return;
+  }
+  const workoutOptions = (workoutsState.order||[]).map(id=>{
+    const workout = getWorkout(id);
+    const label = workout?.label || id;
+    const selected = id===activeDetailState.workout ? 'selected' : '';
+    return `<option value="${escapeHtml(id)}" ${selected}>${escapeHtml(label)}</option>`;
+  }).join('');
+  const rowsHtml = (activeDetailState.rows||[]).map((row, idx)=>{
+    const setsHtml = (row.sets||[]).map((set,si)=>{
+      return `<div class="detail-setgrid" data-row="${idx}" data-set="${si}">
+        <div>${si+1}</div>
+        <input type="number" step="0.5" data-field="w" value="${set.w||''}" />
+        <input type="number" step="1" data-field="reps" value="${set.reps||''}" />
+        <input type="number" step="0.5" data-field="rpe" value="${set.rpe||''}" />
+        <button class="btn ghost" data-detail="remove-set">−</button>
+      </div>`;
+    }).join('');
+    const setsBody = setsHtml || '<div class="detail-empty">Noch keine Sätze – füge unten einen Satz hinzu.</div>';
+    return `<div class="detail-card" data-row="${idx}">
+      <h4><input type="text" list="exerciseLibrary" data-field="name" value="${escapeHtml(row.name||'')}" placeholder="Übungsname" /></h4>
+      <div class="detail-sets">${setsBody}</div>
+      <div class="btnrow">
+        <button class="btn ghost" data-detail="add-set">+ Satz</button>
+        <button class="btn ghost danger" data-detail="remove-row">Übung entfernen</button>
+      </div>
+    </div>`;
+  }).join('');
+  const rowsBody = rowsHtml || '<div class="detail-empty">Noch keine Übungen – füge eine Übung hinzu.</div>';
+  activityDetailBody.innerHTML = `<div class="detail-body">
+    <div class="detail-head">
+      <label class="chip">Datum
+        <input type="date" data-field="date" value="${activeDetailState.date}" />
+      </label>
+      <label class="chip">Workout
+        <select data-field="workout">${workoutOptions}</select>
+      </label>
+      <button class="btn ghost" data-detail="add-row">+ Übung</button>
+    </div>
+    <div class="detail-sets">${rowsBody}</div>
+    <div class="detail-actions">
+      <button class="btn ghost" data-detail="cancel">Abbrechen</button>
+      <button class="btn" data-detail="save">Speichern</button>
+    </div>
+  </div>`;
+}
+
+function setupActivityDetailEvents(){
+  if(!activityDetailBody || activityDetailBody.dataset.bound) return;
+  activityDetailBody.dataset.bound='1';
+  activityDetailBody.addEventListener('change', onActivityDetailChange);
+  activityDetailBody.addEventListener('click', onActivityDetailClick);
+}
+
+function onActivityDetailChange(evt){
+  if(!activeDetailState) return;
+  const target = evt.target;
+  const field = target.dataset.field;
+  if(field==='date'){
+    activeDetailState.date = target.value || todayISO();
+    return;
+  }
+  if(field==='workout'){
+    activeDetailState.workout = target.value;
+    return;
+  }
+  const card = target.closest('.detail-card');
+  if(!card) return;
+  const rowIdx = parseInt(card.dataset.row,10);
+  if(isNaN(rowIdx) || !activeDetailState.rows[rowIdx]) return;
+  if(field==='name'){
+    activeDetailState.rows[rowIdx].name = target.value.trim();
+    return;
+  }
+  const setEl = target.closest('.detail-setgrid');
+  if(!setEl) return;
+  const setIdx = parseInt(setEl.dataset.set,10);
+  if(isNaN(setIdx) || !activeDetailState.rows[rowIdx].sets[setIdx]) return;
+  if(field==='w'){ activeDetailState.rows[rowIdx].sets[setIdx].w = parseFloat(target.value)||0; }
+  if(field==='reps'){ activeDetailState.rows[rowIdx].sets[setIdx].reps = parseInt(target.value,10)||0; }
+  if(field==='rpe'){ activeDetailState.rows[rowIdx].sets[setIdx].rpe = parseFloat(target.value)||0; }
+}
+
+function onActivityDetailClick(evt){
+  if(!activeDetailState) return;
+  const action = evt.target?.dataset?.detail;
+  if(!action) return;
+  evt.preventDefault();
+  if(action==='cancel'){ closeActivityDetail(); return; }
+  if(action==='save'){ saveActivityDetail(); return; }
+  if(action==='add-row'){
+    activeDetailState.rows.push({ name:'', sets:[{w:0,reps:0,rpe:0}] });
+    renderActivityDetail();
+    return;
+  }
+  const card = evt.target.closest('.detail-card');
+  if(!card) return;
+  const rowIdx = parseInt(card.dataset.row,10);
+  if(isNaN(rowIdx) || !activeDetailState.rows[rowIdx]) return;
+  if(action==='remove-row'){
+    activeDetailState.rows.splice(rowIdx,1);
+    renderActivityDetail();
+    return;
+  }
+  if(action==='add-set'){
+    activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,rpe:0});
+    renderActivityDetail();
+    return;
+  }
+  if(action==='remove-set'){
+    const setEl = evt.target.closest('.detail-setgrid');
+    if(!setEl) return;
+    const setIdx = parseInt(setEl.dataset.set,10);
+    if(isNaN(setIdx)) return;
+    activeDetailState.rows[rowIdx].sets.splice(setIdx,1);
+    if(activeDetailState.rows[rowIdx].sets.length===0){
+      activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,rpe:0});
+    }
+    renderActivityDetail();
+  }
+}
+
+function saveActivityDetail(){
+  if(!activeDetailState) return;
+  const date = activeDetailState.date || todayISO();
+  const workoutId = getWorkout(activeDetailState.workout) ? activeDetailState.workout : (workoutsState.order[0]||'');
+  const rows = (activeDetailState.rows||[]).map(row=>({
+    name: row.name,
+    sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0 || (set.rpe||0)!==0)
+  })).filter(row=>row.name && row.sets.length>0);
+  if(!rows.length){ toast('Bitte erfasse mindestens einen Satz.'); return; }
+  const payload={ date, workout: workoutId, rows };
+  const newKey = `${STORAGE_PREFIX}${workoutId}:${date}`;
+  setSessionRecord(newKey, payload);
+  if(newKey!==activeDetailKey){ removeSessionRecord(activeDetailKey); }
+  removeOtherSessionsForDate(date, newKey);
+  toast('Training aktualisiert');
+  closeActivityDetail();
+  renderActivities();
+  renderExerciseLibrary();
+  buildOverview();
+  drawChart();
+  if(date===dateEl.value){
+    if(workoutSel.value!==workoutId){
+      workoutSel.value = workoutId;
+      renderTracker();
+    }
+    onLoadDay();
+  }
 }
 function dayWorkoutBadge(iso){
   const a=getSession(`${STORAGE_PREFIX}A:${iso}`); const b=getSession(`${STORAGE_PREFIX}B:${iso}`);
@@ -915,6 +1583,25 @@ function deltaStr(cur, prev, label){
   return `${label}: ${arrow} ${pct>=0?'+':''}${pct.toFixed(0)}%`;
 }
 
+function getRangeBounds(rangeId){
+  const end = new Date();
+  end.setHours(0,0,0,0);
+  if(rangeId==='all') return {start:null, end};
+  const daysMap={ '4w':28, '12w':84, '26w':182, '52w':365 };
+  const span = daysMap[rangeId] || 28;
+  const start = new Date(end);
+  start.setDate(start.getDate()-(span-1));
+  return {start, end};
+}
+
+function inBounds(dateStr, bounds){
+  if(!dateStr) return false;
+  const date = new Date(dateStr+'T00:00:00');
+  if(isNaN(date)) return false;
+  if(!bounds.start) return date <= bounds.end;
+  return date >= bounds.start && date <= bounds.end;
+}
+
 // Multi-Exercise Chart + Aggregate Score
 function drawChart(){
   const c=document.getElementById('chart'); const exSel=document.getElementById('exSelect'); const legend = document.getElementById('legend');
@@ -928,6 +1615,8 @@ function drawChart(){
 
   const colors = ['--c1','--c2','--c3','--c4','--c5','--c6'].map(cssVar);
   const pad={l:42,r:6,t:10,b:28}, w=c.width-pad.l-pad.r, h=c.height-pad.t-pad.b;
+  const rangeId = statRangeSel?.value || '4w';
+  const bounds = getRangeBounds(rangeId);
 
   // Build datasets
   const series=[]; let globalDates=new Set();
@@ -935,6 +1624,7 @@ function drawChart(){
   selected.forEach((ex,i)=>{
     const hist=[];
     sessions.forEach(data=>{
+      if(!inBounds(data.date, bounds)) return;
       const row=data.rows?.find(r=>r.name===ex);
       if(!row) return;
       const top = Math.max(...(row.sets||[]).map(s=>+s.w||0),0);
@@ -949,7 +1639,7 @@ function drawChart(){
   const dates=[...globalDates].sort();
   // y-range
   const ys = series.flatMap(s=>s.data.map(p=>p.w));
-  if(ys.length===0){ ctx.fillStyle=cssVar('--muted'); ctx.fillText('Keine Daten vorhanden.',20,24); document.getElementById('aggScore').textContent='–'; return; }
+  if(ys.length===0){ ctx.fillStyle=cssVar('--muted'); ctx.fillText('Keine Daten im gewählten Zeitraum.',20,24); document.getElementById('aggScore').textContent='–'; return; }
   const ymin=Math.min(...ys)*0.9, ymax=Math.max(...ys)*1.1;
   const toX=(i)=> pad.l + (dates.length<=1? 0 : (i*(w/(dates.length-1))));
   const toY=v=> pad.t + h - ((v - ymin)/(ymax - ymin))*h;
