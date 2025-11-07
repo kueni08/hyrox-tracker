@@ -2,17 +2,14 @@
 (() => {
 // Presets & Bibliothek
 const EXERCISE_LIBRARY = [
-  "Front Squat / Hack Squat",
-  "Kreuzheben (konventionell)",
-  "Bankdrücken (schwer)",
-  "Bankdrücken (leicht/mittelschwer)",
+  "Kniebeugen",
+  "Kreuzheben",
+  "Bankdrücken",
   "Bulgarian Split Squat (pro Bein)",
   "Beinbeuger / Glute Drive",
   "Brustfliegende (Kabel/Maschine)",
   "Rückenstrecker",
   "Russian Twists (gesamt)",
-  "Kreuzheben (Volumen/Technik)",
-  "Kniebeugen (Maschine/LH)",
   "Latzug (neutraler Griff)",
   "Kabelrudern (enger Griff)",
   "Schulterdrücken (Maschine/KH)",
@@ -53,6 +50,20 @@ const EXERCISE_LIBRARY = [
   "Bear Crawl"
 ];
 
+const EXERCISE_RENAME_MAP = {
+  "Bankdrücken (schwer)": "Bankdrücken",
+  "Bankdrücken (leicht/mittelschwer)": "Bankdrücken",
+  "Kreuzheben (konventionell)": "Kreuzheben",
+  "Kreuzheben (Volumen/Technik)": "Kreuzheben",
+  "Front Squat / Hack Squat": "Kniebeugen",
+  "Kniebeugen (Maschine/LH)": "Kniebeugen"
+};
+
+function normalizeExerciseName(name){
+  const trimmed = (name || '').trim();
+  return EXERCISE_RENAME_MAP[trimmed] || trimmed;
+}
+
 const DEFAULT_WORKOUTS = {
   version: 1,
   order: ['A','B'],
@@ -62,9 +73,9 @@ const DEFAULT_WORKOUTS = {
       label: 'Training A',
       name: 'Workout A',
       exercises: [
-        {name:"Front Squat / Hack Squat", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/front-squat/"},
-        {name:"Kreuzheben (konventionell)", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
-        {name:"Bankdrücken (schwer)", sets:3, reps:[5,5,5], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Kniebeugen", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/kniebeuge/"},
+        {name:"Kreuzheben", sets:3, reps:[4,4,4], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
+        {name:"Bankdrücken", sets:3, reps:[5,5,5], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
         {name:"Bulgarian Split Squat (pro Bein)", sets:2, reps:[8,8], technique:"https://modusx.de/fitness-uebungen/bulgarian-split-squat/"},
         {name:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
         {name:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/butterfly-an-maschine/"},
@@ -77,9 +88,9 @@ const DEFAULT_WORKOUTS = {
       label: 'Training B',
       name: 'Workout B',
       exercises: [
-        {name:"Bankdrücken (leicht/mittelschwer)", sets:3, reps:[8,8,8], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
-        {name:"Kreuzheben (Volumen/Technik)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
-        {name:"Kniebeugen (Maschine/LH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/kniebeuge/"},
+        {name:"Bankdrücken", sets:3, reps:[8,8,8], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Kreuzheben", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/klassisches-kreuzheben/"},
+        {name:"Kniebeugen", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/kniebeuge/"},
         {name:"Latzug (neutraler Griff)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/latzug/"},
         {name:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/kabelrudern/"},
         {name:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
@@ -117,6 +128,7 @@ const tabWorkouts = $('#tab-workouts');
 const calendarWeekdays = $('#calendarWeekdays');
 const themeToggle = $('#themeToggle');
 const timerBtn = $('#timerBtn');
+const totalTimerBtn = $('#totalTimerBtn');
 const importBtn = $('#importCsv');
 const importInput = $('#importCsvFile');
 const statRangeSel = $('#statRange');
@@ -137,6 +149,8 @@ const STORAGE_PREFIX = 'hyrox:';
 const WORKOUTS_CONFIG_KEY = `${STORAGE_PREFIX}cfg:workouts`;
 const SYNC_ID_KEY = 'athletx:sync:id';
 const SYNC_CACHE_KEY = 'athletx:sync:cache';
+const SESSION_TIMER_KEY = 'athletx:timer:start';
+const TOTAL_TIMER_KEY = 'athletx:timer:total';
 
 let exerciseLibraryOptions = [];
 let statSelectedExercises = new Set();
@@ -162,6 +176,8 @@ let remoteData = loadCachedRemoteData();
 let remoteSaveTimer = null;
 let remoteSaving = false;
 let remoteSavePending = false;
+
+migrateCachedSessions();
 
 let workoutsState = normalizeWorkouts(loadWorkoutsConfig());
 let activeDetailKey = null;
@@ -204,12 +220,76 @@ function normalizeExercises(arr){
   return list.map(ex=>{
     const repsArray = toRepArray(ex?.reps);
     return {
-      name: (ex?.name || ex?.n || '').trim(),
+      name: normalizeExerciseName(ex?.name || ex?.n || ''),
       sets: normalizeSets(ex?.sets, repsArray.length),
       reps: repsArray,
       technique: (ex?.technique || ex?.t || '').trim()
     };
   });
+}
+
+function normalizeSessionData(session){
+  if(!session || typeof session!=="object") return session;
+  const base = {...session};
+  const rows = Array.isArray(session.rows)? session.rows : [];
+  const merged = [];
+  const seen = new Map();
+  rows.forEach(row=>{
+    if(!row) return;
+    const name = normalizeExerciseName(row.name || '');
+    if(!name) return;
+    const sets = Array.isArray(row.sets)? row.sets.map(set=>{
+      const w = Number(set?.w);
+      const reps = Number(set?.reps);
+      const rpe = Number(set?.rpe);
+      return {
+        w: Number.isFinite(w)? w : 0,
+        reps: Number.isFinite(reps)? reps : 0,
+        rpe: Number.isFinite(rpe)? rpe : 0
+      };
+    }) : [];
+    if(!seen.has(name)){
+      const copy = { name, sets: sets.slice() };
+      merged.push(copy);
+      seen.set(name, copy);
+    }else{
+      seen.get(name).sets.push(...sets);
+    }
+  });
+  base.rows = merged;
+  return base;
+}
+
+function rowsSignature(rows){
+  return JSON.stringify((rows||[]).map(row=>({
+    name: normalizeExerciseName(row?.name || ''),
+    sets: (row?.sets||[]).map(set=>({
+      w: Number.isFinite(Number(set?.w))? Number(set?.w) : 0,
+      reps: Number.isFinite(Number(set?.reps))? Number(set?.reps) : 0,
+      rpe: Number.isFinite(Number(set?.rpe))? Number(set?.rpe) : 0
+    }))
+  })));
+}
+
+function migrateCachedSessions(){
+  let changed = false;
+  Object.entries(remoteData||{}).forEach(([key, record])=>{
+    if(!isTrainingKey(key) || !record || record.deletedAt) return;
+    const normalized = normalizeSessionData(record);
+    if(rowsSignature(record.rows) !== rowsSignature(normalized.rows)){
+      const preserved = {...normalized};
+      if(record.updatedAt) preserved.updatedAt = record.updatedAt;
+      if(record.createdAt) preserved.createdAt = record.createdAt;
+      if(record.deletedAt) preserved.deletedAt = record.deletedAt;
+      remoteData[key] = preserved;
+      try{ localStorage.setItem(key, JSON.stringify(preserved)); }catch(e){}
+      changed = true;
+    }
+  });
+  if(changed){
+    persistRemoteCache();
+    scheduleRemoteSave();
+  }
 }
 
 function toRepArray(value){
@@ -237,7 +317,7 @@ function serializeWorkouts(state){
       label: workout.label,
       name: workout.name,
       exercises: (workout.exercises||[]).map(ex=>({
-        name: ex.name,
+        name: normalizeExerciseName(ex.name),
         sets: ex.sets,
         reps: Array.isArray(ex.reps)? ex.reps.slice() : [],
         technique: ex.technique||''
@@ -277,12 +357,17 @@ function renderWorkoutSelector(){
 
 function renderExerciseLibrary(){
   if(!exerciseLibraryEl) return;
-  const names = new Set(EXERCISE_LIBRARY);
+  const names = new Set();
+  const addName = name=>{
+    const normalized = normalizeExerciseName(name);
+    if(normalized) names.add(normalized);
+  };
+  EXERCISE_LIBRARY.forEach(addName);
   (workoutsState.order||[]).forEach(id=>{
-    getWorkoutExercises(id).forEach(ex=>{ if(ex.name) names.add(ex.name); });
+    getWorkoutExercises(id).forEach(ex=>{ if(ex.name) addName(ex.name); });
   });
   sessionEntries().forEach(({data})=>{
-    (data?.rows||[]).forEach(row=>{ if(row?.name) names.add(row.name); });
+    (data?.rows||[]).forEach(row=>{ if(row?.name) addName(row.name); });
   });
   const sorted=[...names].filter(Boolean).sort((a,b)=>a.localeCompare(b,'de',{sensitivity:'base'}));
   exerciseLibraryEl.innerHTML = sorted.map(name=>`<option value="${escapeHtml(name)}"></option>`).join('');
@@ -379,7 +464,7 @@ function onWorkoutManagerChange(evt){
   if(!exEl) return;
   const idx = parseInt(exEl.dataset.idx,10);
   if(isNaN(idx) || !workout.exercises[idx]) return;
-  if(field==='exercise-name'){ workout.exercises[idx].name = target.value.trim(); }
+  if(field==='exercise-name'){ workout.exercises[idx].name = normalizeExerciseName(target.value.trim()); }
   if(field==='exercise-sets'){ workout.exercises[idx].sets = Math.max(1, parseInt(target.value,10)||1); }
   if(field==='exercise-reps'){ workout.exercises[idx].reps = toRepArray(target.value); }
   if(field==='exercise-technique'){ workout.exercises[idx].technique = target.value.trim(); }
@@ -458,6 +543,7 @@ let dirty=false, autosaveTimer=null, saveDebounce=null;
 
 // Timer
 let timerId=null, startTs=null;
+let totalTimerId=null, totalStartTs=null;
 
 // Theme init
 (function initTheme(){
@@ -486,6 +572,7 @@ async function boot(){
   bindTabs();
   bindControls();
   setupAutosave();
+  setupTotalTimerFromSession();
   setupTimerFromSession();
   try{
     await initSync();
@@ -532,6 +619,7 @@ function bindControls(){
     }
   });
   themeToggle?.addEventListener('click', toggleTheme);
+  totalTimerBtn?.addEventListener('click', ()=>restartTotalTimer(true));
   timerBtn?.addEventListener('click', restartTimer);
   if(dateEl){
     dateEl.addEventListener('change', ()=>{
@@ -590,12 +678,22 @@ function updateThemeIcon(){
 function restartTimer(){
   if(timerId) clearInterval(timerId);
   startTs = Date.now();
-  sessionStorage.setItem('athletx:timer:start', String(startTs));
+  sessionStorage.setItem(SESSION_TIMER_KEY, String(startTs));
   tickTimer();
   timerId = setInterval(tickTimer, 250);
+  if(!totalStartTs){ restartTotalTimer(false); }
   if('vibrate' in navigator){ try{ navigator.vibrate(15); }catch(e){} }
 }
+function restartTotalTimer(manual=false){
+  if(totalTimerId) clearInterval(totalTimerId);
+  totalStartTs = Date.now();
+  sessionStorage.setItem(TOTAL_TIMER_KEY, String(totalStartTs));
+  tickTotalTimer();
+  totalTimerId = setInterval(tickTotalTimer, 1000);
+  if(manual && 'vibrate' in navigator){ try{ navigator.vibrate(15); }catch(e){} }
+}
 function tickTimer(){
+  if(!timerBtn) return;
   if(!startTs){ timerBtn.textContent = '⏱ 00:00'; return; }
   const elapsed = Date.now() - startTs;
   const totalSec = Math.floor(elapsed/1000);
@@ -605,17 +703,49 @@ function tickTimer(){
   const hh = h>0 ? String(h).padStart(2,'0') + ':' : '';
   timerBtn.textContent = `⏱ ${hh}${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
+function tickTotalTimer(){
+  if(!totalTimerBtn) return;
+  if(!totalStartTs){
+    totalTimerBtn.textContent = '🕒 00:00:00';
+    return;
+  }
+  const elapsed = Date.now() - totalStartTs;
+  const totalSec = Math.max(0, Math.floor(elapsed/1000));
+  const h = Math.floor(totalSec/3600);
+  const m = Math.floor((totalSec%3600)/60);
+  const s = totalSec%60;
+  const hh = String(h).padStart(2,'0');
+  totalTimerBtn.textContent = `🕒 ${hh}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
 function setupTimerFromSession(){
-  const saved = sessionStorage.getItem('athletx:timer:start');
+  if(!timerBtn) return;
+  const saved = sessionStorage.getItem(SESSION_TIMER_KEY);
   if(saved){
-    startTs = parseInt(saved,10);
-    if(!isNaN(startTs)){
-      timerId = setInterval(tickTimer, 250);
+    const parsed = parseInt(saved,10);
+    if(Number.isFinite(parsed)){
+      startTs = parsed;
       tickTimer();
-    }else{
-      startTs = null;
+      timerId = setInterval(tickTimer, 250);
+      return;
     }
   }
+  startTs = null;
+  tickTimer();
+}
+function setupTotalTimerFromSession(){
+  if(!totalTimerBtn) return;
+  const saved = sessionStorage.getItem(TOTAL_TIMER_KEY);
+  if(saved){
+    const parsed = parseInt(saved,10);
+    if(Number.isFinite(parsed)){
+      totalStartTs = parsed;
+      tickTotalTimer();
+      totalTimerId = setInterval(tickTotalTimer, 1000);
+      return;
+    }
+  }
+  totalStartTs = null;
+  tickTotalTimer();
 }
 
 // Sync storage helpers
@@ -644,7 +774,7 @@ function localSessionSnapshot(){
     try{
       const data = JSON.parse(localStorage.getItem(key)||'{}');
       if(data && typeof data==='object'){
-        snap[key]=data;
+        snap[key]=normalizeSessionData(data);
       }
     }catch(e){}
   }
@@ -660,7 +790,8 @@ function applyLocalSnapshot(snapshot){
     }
     if(record && typeof record==='object'){
       keepKeys.add(key);
-      localStorage.setItem(key, JSON.stringify(record));
+      const normalized = normalizeSessionData(record);
+      localStorage.setItem(key, JSON.stringify(normalized));
     }
   });
   for(let i=localStorage.length-1;i>=0;i--){
@@ -691,12 +822,12 @@ function sessionKeys(){
 function getSession(key){
   if(!isTrainingKey(key)) return null;
   const rec = remoteData?.[key];
-  if(rec && !rec.deletedAt) return rec;
+  if(rec && !rec.deletedAt) return normalizeSessionData(rec);
   try{
     const raw = localStorage.getItem(key);
     if(!raw) return null;
     const parsed = JSON.parse(raw);
-    if(parsed && !parsed.deletedAt) return parsed;
+    if(parsed && !parsed.deletedAt) return normalizeSessionData(parsed);
   }catch(e){}
   return null;
 }
@@ -714,7 +845,7 @@ function getConfigRecord(key){
 }
 
 function sessionEntries(){
-  return sessionKeys().map(key=>({ key, data: remoteData[key] }));
+  return sessionKeys().map(key=>({ key, data: normalizeSessionData(remoteData[key]) }));
 }
 
 function allSessionsArray(){
@@ -726,10 +857,21 @@ function cloneRecord(rec){
 }
 
 function mergeSnapshots(base, incoming){
-  const merged = {...(base||{})};
+  const merged = {};
+  Object.entries(base||{}).forEach(([key, record])=>{
+    if(isTrainingKey(key) && record && typeof record==='object' && !record.deletedAt){
+      merged[key] = normalizeSessionData(record);
+    }else{
+      merged[key] = cloneRecord(record);
+    }
+  });
   Object.entries(incoming||{}).forEach(([key, record])=>{
     const current = merged[key];
-    merged[key] = chooseRecord(current, record);
+    let candidate = chooseRecord(current, record);
+    if(isTrainingKey(key) && candidate && typeof candidate==='object' && !candidate.deletedAt){
+      candidate = normalizeSessionData(candidate);
+    }
+    merged[key] = candidate;
   });
   return merged;
 }
@@ -946,7 +1088,7 @@ function writeRecord(key, payload){
 }
 
 function setSessionRecord(key, session){
-  writeRecord(key, session);
+  writeRecord(key, normalizeSessionData(session));
 }
 
 function setConfigRecord(key, value){
@@ -1043,9 +1185,10 @@ function storageKey(){ return `${STORAGE_PREFIX}${workoutSel.value}:${dateEl.val
 
 // Historie
 function lastSetsFor(exName){
+  const target = normalizeExerciseName(exName);
   let latest=null, latestDate='', latestStamp=0;
   sessionEntries().forEach(({data})=>{
-    const row=(data.rows||[]).find(r=>r.name===exName);
+    const row=(data.rows||[]).find(r=>r.name===target);
     if(!row || !data.date) return;
     const stamp = Math.max(data.updatedAt||0, new Date(data.date+'T00:00:00').getTime()||0);
     if(data.date>latestDate || (data.date===latestDate && stamp>latestStamp)){
@@ -1057,10 +1200,11 @@ function lastSetsFor(exName){
   return latest;
 }
 function lastTopSet(exName){
+  const target = normalizeExerciseName(exName);
   const hist=[];
   sessionEntries().forEach(({data})=>{
     (data.rows||[]).forEach(r=>{
-      if(r.name!==exName) return;
+      if(r.name!==target) return;
       const top = Math.max(...(r.sets||[]).map(s=>+s.w||0),0);
       const topRPE = (r.sets||[]).reduce((a,s)=> Math.max(a, +s.rpe||0), 0);
       if(top>0){ hist.push({date:data.date, w:top, rpe:topRPE}); }
@@ -1083,7 +1227,7 @@ function collect(){
       const get=k=>g.querySelector(`[data-k='${k}']`)?.value||'';
       sets.push({w:+get('w')||0, reps:+get('reps')||0, rpe:+get('rpe')||0});
     });
-    day.rows.push({name:ex.name, sets});
+    day.rows.push({name:normalizeExerciseName(ex.name), sets});
   });
   return day;
 }
@@ -1343,7 +1487,7 @@ function normalizeDetailState(session){
     date: session?.date || todayISO(),
     workout: fallbackWorkout,
     rows: (session?.rows||[]).map(row=>({
-      name: row?.name || '',
+      name: normalizeExerciseName(row?.name || ''),
       sets: (row?.sets||[]).map(set=>({
         w: +set?.w || 0,
         reps: +set?.reps || 0,
@@ -1503,7 +1647,7 @@ function saveActivityDetail(){
   const date = activeDetailState.date || todayISO();
   const workoutId = getWorkout(activeDetailState.workout) ? activeDetailState.workout : (workoutsState.order[0]||'');
   const rows = (activeDetailState.rows||[]).map(row=>({
-    name: row.name,
+    name: normalizeExerciseName(row.name),
     sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0 || (set.rpe||0)!==0)
   })).filter(row=>row.name && row.sets.length>0);
   if(!rows.length){ toast('Bitte erfasse mindestens einen Satz.'); return; }
