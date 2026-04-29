@@ -2,38 +2,80 @@
 (() => {
 // Presets & Bibliothek
 const EXERCISE_LIBRARY = [
-  "Kniebeugen",
-  "Kreuzheben",
+  // Brust
   "Bankdrücken",
-  "Bulgarian Split Squat (pro Bein)",
-  "Beinbeuger / Glute Drive",
+  "Schrägbank KH Drücken",
   "Brustfliegende (Kabel/Maschine)",
-  "Rückenstrecker",
-  "Russian Twists (gesamt)",
-  "Latzug (neutraler Griff)",
-  "Kabelrudern (enger Griff)",
-  "Schulterdrücken (Maschine/KH)",
-  "Seitheben (Kabel/KH)",
-  "Hip Thrust",
-  "Ausfallschritte",
-  "Overhead Press",
-  "Bicep Curls",
-  "Trizepsdrücken (Seil)",
-  "Rudern vorgebeugt",
+  "Brustpresse Maschine",
+  "Dips Maschine",
+  // Rücken
+  "Kreuzheben",
+  "Rumänisches Kreuzheben",
   "Klimmzüge",
-  "Beinpresse",
-  "Leg Curl",
-  "Wadenheben",
+  "Latzug (neutraler Griff)",
+  "Lat Pulldown breiter Griff",
+  "Lat Pulldown enger Griff",
+  "Rudern vorgebeugt",
+  "Rudern Maschine",
+  "Kabelrudern (enger Griff)",
+  "Kabelrudern enger Griff",
+  "T-Bar Rudern",
+  "Rückenstrecker",
+  // Schultern
+  "Overhead Press",
+  "Schulterdrücken (Maschine/KH)",
+  "Schulterdrücken Maschine",
+  "Arnold Press",
+  "Seitheben (Kabel/KH)",
+  "Seitheben sitzend",
+  "Seitheben einarmig Kabel",
+  "Reverse Pec Deck",
   "Face Pulls",
+  "Face Pulls Kabel sitzend",
+  // Bizeps
+  "Bizeps Curl SZ-Stange",
+  "Bizeps Curl KH",
+  "Hammer Curl sitzend",
+  "Preacher Curl",
+  // Trizeps
+  "Trizeps Pushdown Kabel",
+  "Trizepsdrücken (Seil)",
+  // Beine
+  "Kniebeugen",
+  "Hack Squat Maschine",
+  "Goblet Squat",
+  "Bulgarian Split Squat (pro Bein)",
+  "Beinpresse",
+  "Beinstrecker Maschine",
+  "Beinstrecker einbeinig",
+  "Beincurl liegend Maschine",
+  "Leg Curl",
+  "Abduktoren Maschine",
+  "Adduktoren Maschine",
+  "Ausfallschritte",
+  "Lunges (Bodyweight)",
+  "Jumping Lunges",
+  "Wadenheben",
+  // Gesäss / Hüfte
+  "Hip Thrust",
+  "Hip Thrust Maschine",
+  "Beinbeuger / Glute Drive",
+  "Glute Kickback Kabel",
+  // Bauch / Core
+  "Cable Crunch kniend",
+  "Hanging Leg Raises",
+  "Ab Wheel Rollout",
+  "Pallof Press",
+  "Russian Twists (gesamt)",
+  "Plank Hold",
+  "Side Plank",
+  "Sit-ups",
+  "Mountain Climbers",
   "Core Rotation",
-  "Farmer's Carry",
-  "Sandbag Lunges",
-  "Burpee Broad Jumps",
+  // Kondition / HYROX
   "Skierg Aufwärmen",
   "Skierg 1min Intervall",
   "Skierg Cool-down",
-  "Dips Maschine",
-  "Kabelrudern enger Griff",
   "SkiErg 1000 m",
   "RowErg 1000 m",
   "Air Bike",
@@ -42,17 +84,15 @@ const EXERCISE_LIBRARY = [
   "Wall Balls",
   "Kettlebell Swings",
   "Box Jumps",
+  "Burpee Broad Jumps",
   "Hand Release Push-Ups",
-  "Plank Hold",
-  "Side Plank",
-  "Sit-ups",
-  "Mountain Climbers",
-  "Lunges (Bodyweight)",
-  "Jumping Lunges",
   "Sprint Intervalls",
   "Double Unders",
   "Battle Ropes",
-  "Bear Crawl"
+  "Bear Crawl",
+  "Sandbag Lunges",
+  // Functional
+  "Farmer's Carry",
 ];
 
 const EXERCISE_RENAME_MAP = {
@@ -444,6 +484,9 @@ let exercisePickerActiveInput = null;
 let exercisePickerFiltered = [];
 let exercisePickerHighlight = -1;
 let exercisePickerCloseTimer = null;
+let openWorkoutIds = new Set();
+
+const WORKOUT_COLORS = ['#a7f3d0','#c4b5fd','#fda4af','#fed7aa','#bae6fd','#fef08a','#86efac','#f9a8d4'];
 
 // ===== JSONBin Konfiguration (statt npoint) =====
 // 1) JSONBin.io → Dashboard → API Keys → Master-Key kopieren (Klartext, KEIN $2a$… Hash)
@@ -485,6 +528,7 @@ function normalizeWorkouts(raw){
       id: data.id || id,
       label: (data.label || data.name || `Workout ${id}`).trim() || `Workout ${id}`,
       name: (data.name || data.label || `Workout ${id}`).trim() || `Workout ${id}`,
+      color: data.color || '',
       exercises: normalizeExercises(data.exercises)
     };
     const key = normalized.id;
@@ -512,7 +556,8 @@ function normalizeExercises(arr){
       sets: normalizeSets(ex?.sets, repsArray.length),
       reps: repsArray,
       technique: (ex?.technique || ex?.t || '').trim(),
-      unit: (ex?.unit || 'kg')
+      unit: (ex?.unit || 'kg'),
+      note: (ex?.note || '').trim()
     };
   });
 }
@@ -605,11 +650,14 @@ function serializeWorkouts(state){
       id: workout.id,
       label: workout.label,
       name: workout.name,
+      color: workout.color||'',
       exercises: (workout.exercises||[]).map(ex=>({
         name: normalizeExerciseName(ex.name),
         sets: ex.sets,
         reps: Array.isArray(ex.reps)? ex.reps.slice() : [],
-        technique: ex.technique||''
+        technique: ex.technique||'',
+        unit: ex.unit||'kg',
+        note: ex.note||''
       }))
     };
   });
@@ -692,10 +740,13 @@ function renderWorkoutManager(){
   workoutManager.innerHTML = workoutsState.order.map((id, idx)=>{
     const workout = getWorkout(id);
     if(!workout) return '';
+    const isOpen = openWorkoutIds.has(id);
+    const color = workout.color || WORKOUT_COLORS[idx % WORKOUT_COLORS.length];
     const exercisesHtml = (workout.exercises||[]).map((ex, exIdx)=>{
       const repsStr = Array.isArray(ex.reps)? ex.reps.join(',') : '';
       return `<div class="workout-exercise" data-workout="${escapeHtml(id)}" data-idx="${exIdx}">
         <input type="text" list="exerciseLibrary" data-field="exercise-name" value="${escapeHtml(ex.name||'')}" placeholder="Übung auswählen" />
+        <input type="text" data-field="exercise-note" value="${escapeHtml(ex.note||'')}" placeholder="Maschine / Notiz" />
         <input type="number" min="1" data-field="exercise-sets" value="${ex.sets||1}" />
         <input type="text" data-field="exercise-reps" value="${escapeHtml(repsStr)}" placeholder="Wdh. z.B. 8,8,8" />
         <input type="text" data-field="exercise-technique" value="${escapeHtml(ex.technique||'')}" placeholder="Technik-Link" />
@@ -710,11 +761,15 @@ function renderWorkoutManager(){
     const upDisabled = idx===0 ? 'disabled' : '';
     const downDisabled = idx===workoutsState.order.length-1 ? 'disabled' : '';
     const deleteBtn = (id==='A' || id==='B') ? '' : '<button class="btn ghost danger" data-action="delete-workout">Löschen</button>';
-    return `<div class="workout-card" data-workout="${escapeHtml(id)}">
-      <div class="workout-header">
+    const swatches = WORKOUT_COLORS.map(c=>`<span class="color-swatch${color===c?' active':''}" data-action="set-color" data-color="${c}" style="background:${c}" title="${c}"></span>`).join('');
+    return `<div class="workout-card" data-workout="${escapeHtml(id)}" style="--wc:${color}">
+      <div class="workout-header" data-action="toggle-workout">
         <div class="title">
-          <label class="hint" for="workout-${escapeHtml(id)}">Bezeichnung</label>
-          <input id="workout-${escapeHtml(id)}" type="text" data-field="label" value="${escapeHtml(workout.label||'')}" placeholder="Workout-Name" />
+          <div class="workout-header-top">
+            <span class="workout-toggle-icon">${isOpen ? '▾' : '▸'}</span>
+            <input id="workout-${escapeHtml(id)}" type="text" data-field="label" value="${escapeHtml(workout.label||'')}" placeholder="Workout-Name" />
+          </div>
+          <div class="color-swatches">${swatches}</div>
         </div>
         <div class="workout-meta">
           <button class="btn ghost" data-action="move-workout-up" ${upDisabled} title="Workout nach oben">▲</button>
@@ -723,7 +778,7 @@ function renderWorkoutManager(){
           ${deleteBtn}
         </div>
       </div>
-      <div class="workout-exercises">${body}</div>
+      <div class="workout-exercises${isOpen ? '' : ' hidden'}">${body}</div>
     </div>`;
   }).join('');
 }
@@ -754,6 +809,7 @@ function onWorkoutManagerChange(evt){
   const idx = parseInt(exEl.dataset.idx,10);
   if(isNaN(idx) || !workout.exercises[idx]) return;
   if(field==='exercise-name'){ workout.exercises[idx].name = normalizeExerciseName(target.value.trim()); }
+  if(field==='exercise-note'){ workout.exercises[idx].note = target.value.trim(); }
   if(field==='exercise-sets'){ workout.exercises[idx].sets = Math.max(1, parseInt(target.value,10)||1); }
   if(field==='exercise-reps'){ workout.exercises[idx].reps = toRepArray(target.value); }
   if(field==='exercise-technique'){ workout.exercises[idx].technique = target.value.trim(); }
@@ -761,16 +817,29 @@ function onWorkoutManagerChange(evt){
 }
 
 function onWorkoutManagerClick(evt){
-  const action = evt.target?.dataset?.action;
+  const action = evt.target?.dataset?.action || evt.target?.closest('[data-action]')?.dataset?.action;
   if(!action) return;
-  evt.preventDefault();
   const card = evt.target.closest('.workout-card');
   if(!card) return;
   const workoutId = card.dataset.workout;
   const workout = getWorkout(workoutId);
   if(!workout) return;
+  if(action==='toggle-workout'){
+    if(evt.target.closest('input,button,select')) return;
+    if(openWorkoutIds.has(workoutId)) openWorkoutIds.delete(workoutId);
+    else openWorkoutIds.add(workoutId);
+    renderWorkoutManager();
+    return;
+  }
+  if(action==='set-color'){
+    workout.color = evt.target.dataset.color || '';
+    saveWorkoutsState();
+    return;
+  }
+  evt.preventDefault();
   if(action==='add-exercise'){
-    workout.exercises.push({ name:'', sets:3, reps:[], technique:'' });
+    openWorkoutIds.add(workoutId);
+    workout.exercises.push({ name:'', sets:3, reps:[], technique:'', note:'' });
     saveWorkoutsState();
     return;
   }
@@ -819,8 +888,10 @@ function createNewWorkout(){
   let counter = 1;
   while(workoutsState.map[id]){ id = `${idBase}-${counter++}`; }
   const label = `Workout ${workoutsState.order.length+1}`;
+  const usedColors = workoutsState.order.map(wid=>workoutsState.map[wid]?.color).filter(Boolean);
+  const color = WORKOUT_COLORS.find(c=>!usedColors.includes(c)) || WORKOUT_COLORS[workoutsState.order.length % WORKOUT_COLORS.length];
   workoutsState.order.push(id);
-  workoutsState.map[id] = { id, label, name: label, exercises: [] };
+  workoutsState.map[id] = { id, label, name: label, color, exercises: [] };
   saveWorkoutsState();
   workoutSel.value = id;
   renderTracker();
@@ -1581,6 +1652,7 @@ function renderTracker(){
           <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
           ${plateauBadge}
         </div>
+        ${ex.note ? `<div class="exercise-note">${escapeHtml(ex.note)}</div>` : ''}
         <div class="exercise-meta">
           <span class="orm-display" id="orm-${idx}"></span>
         </div>
