@@ -69,6 +69,7 @@
               <div class="recap-kpis">
                 <div><span id="wkWorkouts">0</span><small>Workouts</small></div>
                 <div><span id="wkVolume">0</span><small>kg Volumen</small></div>
+                <div><span id="wkSets">0</span><small>Sätze</small></div>
                 <div><span id="wkAvgRPE">0.0</span><small>Ø RPE</small></div>
               </div>
               <div class="delta" id="wkDelta">–</div>
@@ -78,10 +79,23 @@
               <div class="recap-kpis">
                 <div><span id="moWorkouts">0</span><small>Workouts</small></div>
                 <div><span id="moVolume">0</span><small>kg Volumen</small></div>
+                <div><span id="moSets">0</span><small>Sätze</small></div>
                 <div><span id="moAvgRPE">0.0</span><small>Ø RPE</small></div>
               </div>
               <div class="delta" id="moDelta">–</div>
             </div>
+            <div class="streak-card" id="streakCard">
+              <div class="streak-icon">🔥</div>
+              <div class="streak-value"><span id="streakCount">0</span></div>
+              <div class="streak-label">Wochen Streak</div>
+            </div>
+          </div>
+
+          <div class="pr-section">
+            <div class="pr-section-head">
+              <h3>Bestleistungen (PRs)</h3>
+            </div>
+            <div id="prList"></div>
           </div>
         </div>
 
@@ -99,6 +113,7 @@
                 <option value="all">Gesamter Zeitraum</option>
               </select>
             </label>
+            <button id="chartMode" class="btn ghost chart-mode-btn" data-mode="weight">Est. 1RM-Ansicht</button>
             <div class="legend" id="legend"></div>
           </div>
           <canvas id="chart" width="900" height="320"></canvas>
@@ -107,6 +122,18 @@
             <div class="agg-item"><b>Gesamt‑Fortschritt</b>: <span id="aggScore">–</span></div>
             <div class="agg-item hint">Berechnet aus linearem Trend der Top‑Satz‑Gewichte (Ø aller ausgewählten Übungen, letzte 6 Wochen).</div>
           </div>
+        </div>
+
+        <div class="muscle-card">
+          <div class="muscle-head">
+            <h3>Sätze pro Muskelgruppe</h3>
+            <select id="muscleRange">
+              <option value="4w" selected>Letzte 4 Wochen</option>
+              <option value="12w">Letzte 12 Wochen</option>
+              <option value="26w">Letzte 6 Monate</option>
+            </select>
+          </div>
+          <canvas id="muscleChart" width="600" height="260"></canvas>
         </div>
       </div>
     </section>

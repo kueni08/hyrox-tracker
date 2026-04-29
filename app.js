@@ -64,9 +64,203 @@ function normalizeExerciseName(name){
   return EXERCISE_RENAME_MAP[trimmed] || trimmed;
 }
 
+const MUSCLE_GROUP_MAP = {
+  "Bankdrücken":                        "Brust",
+  "Schrägbank KH Drücken":              "Brust",
+  "Brustfliegende (Kabel/Maschine)":    "Brust",
+  "Brustpresse Maschine":               "Brust",
+  "Latzug (neutraler Griff)":           "Rücken",
+  "Lat Pulldown breiter Griff":         "Rücken",
+  "Lat Pulldown enger Griff":           "Rücken",
+  "Kabelrudern (enger Griff)":          "Rücken",
+  "Rudern Maschine":                    "Rücken",
+  "Rückenstrecker":                     "Rücken",
+  "Kreuzheben":                         "Rücken",
+  "Reverse Pec Deck":                   "Schultern",
+  "Schulterdrücken (Maschine/KH)":      "Schultern",
+  "Schulterdrücken Maschine":           "Schultern",
+  "Seitheben (Kabel/KH)":               "Schultern",
+  "Seitheben sitzend":                  "Schultern",
+  "Seitheben einarmig Kabel":           "Schultern",
+  "Face Pulls Kabel sitzend":           "Schultern",
+  "Bizeps Curl SZ-Stange":              "Bizeps",
+  "Hammer Curl sitzend":                "Bizeps",
+  "Trizeps Pushdown Kabel":             "Trizeps",
+  "Kniebeugen":                         "Beine",
+  "Beinstrecker Maschine":              "Beine",
+  "Beinstrecker einbeinig":             "Beine",
+  "Abduktoren Maschine":                "Beine",
+  "Adduktoren Maschine":                "Beine",
+  "Bulgarian Split Squat (pro Bein)":   "Beine",
+  "Beincurl liegend Maschine":          "Hamstrings",
+  "Beinbeuger / Glute Drive":           "Hamstrings",
+  "Hip Thrust Maschine":                "Gesäss",
+  "Glute Kickback Kabel":               "Gesäss",
+  "Cable Crunch kniend":                "Bauch",
+  "Russian Twists (gesamt)":            "Bauch",
+};
+
+function epley(w, r){
+  if(!w || !r || r <= 1) return w || 0;
+  return Math.round(w * (1 + r / 30));
+}
+
+function getAllTimePR(exerciseName){
+  let best = null;
+  allSessionsArray().forEach(session => {
+    const row = (session.rows || []).find(r => r.name === exerciseName);
+    if(!row) return;
+    (row.sets || []).forEach(s => {
+      const w = +s.w || 0;
+      if(w > 0 && (!best || w > best.weight)){
+        best = {weight: w, reps: +s.reps || 0, date: session.date};
+      }
+    });
+  });
+  return best;
+}
+
+function computeStreak(){
+  const sessionDates = new Set(allSessionsArray().map(s => s.date).filter(Boolean));
+  if(!sessionDates.size) return 0;
+  const getWeekKey = iso => {
+    const d = new Date(iso + 'T00:00:00');
+    const day = (d.getDay() + 6) % 7;
+    const mon = new Date(d); mon.setDate(d.getDate() - day);
+    return toLocalISO(mon);
+  };
+  const weeks = new Set([...sessionDates].map(getWeekKey));
+  const sorted = [...weeks].sort().reverse();
+  const todayWeek = getWeekKey(todayISO());
+  let streak = 0;
+  let expected = todayWeek;
+  for(const w of sorted){
+    if(w === expected){
+      streak++;
+      const d = new Date(expected + 'T00:00:00');
+      d.setDate(d.getDate() - 7);
+      expected = toLocalISO(d);
+    } else { break; }
+  }
+  return streak;
+}
+
+function getLastSameWorkoutSession(workoutId, currentDate){
+  const sessions = allSessionsArray()
+    .filter(s => s.workout === workoutId && s.date && s.date !== currentDate)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if(!sessions.length) return null;
+  const last = sessions[0];
+  let volume = 0;
+  (last.rows || []).forEach(row => {
+    (row.sets || []).forEach(s => { volume += (+s.w || 0) * (+s.reps || 0); });
+  });
+  return {date: last.date, volume};
+}
+
+function checkPlateau(exerciseName, workoutId){
+  const sessions = allSessionsArray()
+    .filter(s => s.workout === workoutId && s.date)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const relevant = [];
+  for(const sess of sessions){
+    const row = (sess.rows || []).find(r => r.name === exerciseName);
+    if(row && row.sets && row.sets.length){
+      const topW = Math.max(...row.sets.map(s => +s.w || 0));
+      const avgRPE = row.sets.reduce((acc, s) => acc + (+s.rpe || 0), 0) / row.sets.length;
+      if(topW > 0) relevant.push({topW, avgRPE});
+    }
+    if(relevant.length >= 3) break;
+  }
+  if(relevant.length < 3) return null;
+  const weights = relevant.map(r => r.topW);
+  if(weights[0] === weights[1] && weights[1] === weights[2]) return 'plateau';
+  if(relevant[0].avgRPE > 0 && relevant[0].avgRPE <= 6) return 'ready';
+  return null;
+}
+
+function computeMuscleVolume(rangeId){
+  const bounds = getRangeBounds(rangeId);
+  const groups = {};
+  allSessionsArray().forEach(session => {
+    if(!inBounds(session.date, bounds)) return;
+    (session.rows || []).forEach(row => {
+      const muscle = MUSCLE_GROUP_MAP[row.name];
+      if(!muscle) return;
+      const sets = (row.sets || []).filter(s => (+s.w || 0) > 0 || (+s.reps || 0) > 0).length || row.sets?.length || 0;
+      groups[muscle] = (groups[muscle] || 0) + sets;
+    });
+  });
+  return groups;
+}
+
+function buildPRList(){
+  const el = document.getElementById('prList');
+  if(!el) return;
+  const names = new Set();
+  (workoutsState.order || []).forEach(id => {
+    getWorkoutExercises(id).forEach(x => names.add(x.name));
+  });
+  const prs = [...names].map(name => {
+    const pr = getAllTimePR(name);
+    if(!pr) return null;
+    return {name, ...pr, orm: epley(pr.weight, pr.reps)};
+  }).filter(Boolean).sort((a, b) => b.weight - a.weight).slice(0, 10);
+  if(!prs.length){
+    el.innerHTML = '<div class="pr-empty">Noch keine Daten. Starte dein erstes Training!</div>';
+    return;
+  }
+  const fmt = new Intl.DateTimeFormat('de-DE', {day:'2-digit', month:'2-digit', year:'2-digit'});
+  el.innerHTML = `<table class="pr-table">
+    <thead><tr><th>Übung</th><th>Gewicht</th><th>Wdh.</th><th>Est. 1RM</th><th>Datum</th></tr></thead>
+    <tbody>${prs.map(p => `<tr>
+      <td>${escapeHtml(p.name)}</td>
+      <td><strong>${p.weight} kg</strong></td>
+      <td>${p.reps}</td>
+      <td class="orm">${p.orm} kg</td>
+      <td class="pr-date">${fmt.format(new Date(p.date + 'T00:00:00'))}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function drawMuscleChart(){
+  const c = document.getElementById('muscleChart');
+  const sel = document.getElementById('muscleRange');
+  if(!c) return;
+  const ctx = c.getContext('2d');
+  const rangeId = sel ? sel.value : '4w';
+  const data = computeMuscleVolume(rangeId);
+  const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+  ctx.clearRect(0, 0, c.width, c.height);
+  if(!entries.length){
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '13px system-ui';
+    ctx.fillText('Noch keine Trainingsdaten.', 12, 30); return;
+  }
+  const pad = {l: 90, r: 16, t: 12, b: 16};
+  const w = c.width - pad.l - pad.r;
+  const barH = Math.min(28, (c.height - pad.t - pad.b) / entries.length - 4);
+  const maxVal = entries[0][1];
+  const colors = ['--c1','--c2','--c3','--c4','--c5','--c6'].map(cssVar);
+  entries.forEach(([muscle, sets], i) => {
+    const y = pad.t + i * (barH + 6);
+    const bw = maxVal > 0 ? (sets / maxVal) * w : 0;
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(pad.l, y, bw, barH, 3);
+    else ctx.rect(pad.l, y, bw, barH);
+    ctx.fill();
+    ctx.fillStyle = cssVar('--fg');
+    ctx.font = '12px system-ui'; ctx.textAlign = 'right';
+    ctx.fillText(muscle, pad.l - 6, y + barH - 4);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = cssVar('--muted');
+    ctx.fillText(sets + ' Sätze', pad.l + bw + 4, y + barH - 4);
+  });
+}
+
 const DEFAULT_WORKOUTS = {
   version: 1,
-  order: ['A','B'],
+  order: ['A','B','HA','HB','HC'],
   map: {
     A: {
       id: 'A',
@@ -96,6 +290,50 @@ const DEFAULT_WORKOUTS = {
         {name:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
         {name:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
         {name:"Russian Twists (gesamt)", sets:2, reps:[20,20], technique:"https://modusx.de/fitness-uebungen/russian-twist/"}
+      ]
+    },
+    HA: {
+      id: 'HA',
+      label: 'Hypertrophie A – Push',
+      name: 'Hypertrophie A – Push',
+      exercises: [
+        {name:"Bankdrücken", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Schrägbank KH Drücken", sets:3, reps:[10,10,10], technique:""},
+        {name:"Schulterdrücken Maschine", sets:3, reps:[10,10,10], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
+        {name:"Seitheben sitzend", sets:3, reps:[12,12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
+        {name:"Trizeps Pushdown Kabel", sets:3, reps:[12,12,12], technique:""},
+        {name:"Beinstrecker Maschine", sets:3, reps:[10,10,10], technique:""},
+        {name:"Cable Crunch kniend", sets:3, reps:[12,12,12], technique:""}
+      ]
+    },
+    HB: {
+      id: 'HB',
+      label: 'Hypertrophie B – Pull',
+      name: 'Hypertrophie B – Pull',
+      exercises: [
+        {name:"Lat Pulldown breiter Griff", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/latzug/"},
+        {name:"Rudern Maschine", sets:3, reps:[10,10,10], technique:""},
+        {name:"Reverse Pec Deck", sets:3, reps:[12,12,12], technique:""},
+        {name:"Face Pulls Kabel sitzend", sets:3, reps:[12,12,12], technique:""},
+        {name:"Bizeps Curl SZ-Stange", sets:3, reps:[10,10,10], technique:""},
+        {name:"Hammer Curl sitzend", sets:3, reps:[12,12,12], technique:""},
+        {name:"Beincurl liegend Maschine", sets:3, reps:[10,10,10], technique:""},
+        {name:"Cable Crunch kniend", sets:3, reps:[12,12,12], technique:""}
+      ]
+    },
+    HC: {
+      id: 'HC',
+      label: 'Hypertrophie C – Glutes',
+      name: 'Hypertrophie C – Glutes',
+      exercises: [
+        {name:"Hip Thrust Maschine", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
+        {name:"Glute Kickback Kabel", sets:3, reps:[12,12,12], technique:""},
+        {name:"Abduktoren Maschine", sets:3, reps:[12,12,12], technique:""},
+        {name:"Adduktoren Maschine", sets:3, reps:[12,12,12], technique:""},
+        {name:"Beinstrecker einbeinig", sets:3, reps:[10,10,10], technique:""},
+        {name:"Brustpresse Maschine", sets:3, reps:[10,10,10], technique:""},
+        {name:"Lat Pulldown enger Griff", sets:3, reps:[10,10,10], technique:"https://modusx.de/fitness-uebungen/latzug/"},
+        {name:"Seitheben einarmig Kabel", sets:3, reps:[12,12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"}
       ]
     }
   }
@@ -1250,13 +1488,44 @@ function renderTracker(){
     tabTracker.innerHTML = '<div class="activities-empty">Bitte füge diesem Workout zuerst Übungen hinzu.</div>';
     return;
   }
-  let html='';
+
+  // Session-Vergleich Banner
+  const lastSess = getLastSameWorkoutSession(workoutSel.value, dateEl.value);
+  let compareHtml = '';
+  if(lastSess && lastSess.volume > 0){
+    const fmt2 = new Intl.DateTimeFormat('de-DE', {day:'2-digit', month:'2-digit'});
+    const lastDateFmt = fmt2.format(new Date(lastSess.date + 'T00:00:00'));
+    compareHtml = `<div class="session-compare" id="sessionCompare" data-last-vol="${lastSess.volume}">
+      Letztes ${workoutsState.map[workoutSel.value]?.label||'Training'}: ${lastDateFmt} · <span id="compareDelta">–</span>
+    </div>`;
+  } else {
+    compareHtml = `<div class="session-compare session-compare--new" id="sessionCompare">Erste Session für dieses Workout – leg los!</div>`;
+  }
+
+  let html = compareHtml;
   exercises.forEach((ex,idx)=>{
     const last = lastSetsFor(ex.name);
     const setCount = Math.max(ex.sets||1, last? last.length : (ex.sets||1));
-    html += `<div class="card" id="card-${idx}">
+
+    // Plateau check
+    const plateauState = checkPlateau(ex.name, workoutSel.value);
+    let plateauBadge = '';
+    if(plateauState === 'plateau') plateauBadge = `<span class="badge-plateau">⚠ Plateau</span>`;
+    else if(plateauState === 'ready') plateauBadge = `<span class="badge-ready">↑ Steigern?</span>`;
+
+    // PR for this exercise
+    const pr = getAllTimePR(ex.name);
+    const prWeight = pr ? pr.weight : 0;
+
+    html += `<div class="card" id="card-${idx}" data-pr="${prWeight}">
       <div class="exercise-head">
-        <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
+        <div class="pill-wrap">
+          <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
+          ${plateauBadge}
+        </div>
+        <div class="exercise-meta">
+          <span class="orm-display" id="orm-${idx}"></span>
+        </div>
         <div class="btnrow">
           <button class="btn ghost" data-act="suggest" data-idx="${idx}">Vorschläge aktualisieren</button>
           ${ex.technique ? `<a class="btn ghost" href="${escapeHtml(ex.technique)}" target="_blank" rel="noopener">Technik</a>`:``}
@@ -1270,6 +1539,7 @@ function renderTracker(){
         <div class="hdr">Vorschlag</div>
         <div class="hdr">Wdh.</div>
         <div class="hdr">RPE</div>
+        <div class="hdr"></div>
       </div>`;
     for(let s=0;s<setCount;s++){
       const recentSets = last || [];
@@ -1280,17 +1550,75 @@ function renderTracker(){
       const weightVal = histSet?.w ?? (sugg ?? '');
       const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
       const rpeVal = histSet?.rpe ?? '';
+      const isPR = prWeight > 0 && weightVal > prWeight;
       html += `<div class="setgrid" data-idx="${idx}" data-set="${s}">
         <div>${s+1}</div>
-        <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}"></div>
+        <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}" ${isPR ? 'class="pr-input"' : ''}></div>
         <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
         <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
         <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${rpeVal ?? ''}"></div>
+        <div class="pr-flag">${isPR ? '<span class="pr-badge">PR!</span>' : ''}</div>
       </div>`;
     }
     html += `</div>`;
   });
   tabTracker.innerHTML = html;
+
+  // Live PR + 1RM + session-compare updates
+  function updateLiveStats(){
+    exercises.forEach((ex, idx) => {
+      const card = document.getElementById(`card-${idx}`);
+      if(!card) return;
+      const prWeight = +card.dataset.pr || 0;
+      let bestOrm = 0;
+      card.querySelectorAll('.setgrid[data-idx]').forEach(row => {
+        const w = +row.querySelector('[data-k="w"]')?.value || 0;
+        const r = +row.querySelector('[data-k="reps"]')?.value || 0;
+        const orm = epley(w, r);
+        if(orm > bestOrm) bestOrm = orm;
+        const wInput = row.querySelector('[data-k="w"]');
+        const prFlag = row.querySelector('.pr-flag');
+        if(wInput && prFlag){
+          const isNewPR = prWeight > 0 && +wInput.value > prWeight;
+          wInput.classList.toggle('pr-input', isNewPR);
+          prFlag.innerHTML = isNewPR ? '<span class="pr-badge">PR!</span>' : '';
+        }
+      });
+      const ormEl = document.getElementById(`orm-${idx}`);
+      if(ormEl) ormEl.textContent = bestOrm > 0 ? `Est. 1RM: ${bestOrm} kg` : '';
+    });
+
+    // Session-compare delta
+    const compareEl = document.getElementById('sessionCompare');
+    const deltaEl = document.getElementById('compareDelta');
+    if(compareEl && deltaEl){
+      const lastVol = +compareEl.dataset.lastVol || 0;
+      if(lastVol > 0){
+        let curVol = 0;
+        exercises.forEach((ex, idx) => {
+          const card = document.getElementById(`card-${idx}`);
+          if(!card) return;
+          card.querySelectorAll('.setgrid[data-idx]').forEach(row => {
+            const w = +row.querySelector('[data-k="w"]')?.value || 0;
+            const r = +row.querySelector('[data-k="reps"]')?.value || 0;
+            curVol += w * r;
+          });
+        });
+        if(curVol > 0){
+          const pct = ((curVol - lastVol) / lastVol * 100);
+          const sign = pct >= 0 ? '+' : '';
+          deltaEl.textContent = sign + pct.toFixed(0) + '% Volumen';
+          deltaEl.className = pct >= 0 ? 'compare-up' : 'compare-down';
+        } else {
+          deltaEl.textContent = '–';
+        }
+      }
+    }
+  }
+
+  // Run once and on every input
+  updateLiveStats();
+  tabTracker.addEventListener('input', updateLiveStats);
 
   tabTracker.querySelectorAll('[data-act="suggest"]').forEach(btn=>btn.addEventListener('click', ()=>{
     const idx=+btn.dataset.idx;
@@ -1304,6 +1632,7 @@ function renderTracker(){
       row.querySelector(`[data-k='w']`).value = sugg ?? '';
       row.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' kg') : '';
     });
+    updateLiveStats();
     markDirty(); toast('Vorschlag aktualisiert');
   }));
   tabTracker.querySelectorAll('[data-act="addset"]').forEach(btn=>btn.addEventListener('click', ()=>{ addSetRow(+btn.dataset.idx); markDirty(); }));
@@ -1387,6 +1716,25 @@ function buildOverview(){
 
   // Recaps
   computeRecaps(base);
+
+  // PR List
+  buildPRList();
+
+  // Muscle chart
+  drawMuscleChart();
+  const muscleRangeSel = document.getElementById('muscleRange');
+  if(muscleRangeSel) muscleRangeSel.onchange = () => drawMuscleChart();
+
+  // Chart mode toggle (weight vs e1RM)
+  const chartModeBtn = document.getElementById('chartMode');
+  if(chartModeBtn){
+    chartModeBtn.onclick = () => {
+      const cur = chartModeBtn.dataset.mode;
+      chartModeBtn.dataset.mode = cur === 'weight' ? 'orm' : 'weight';
+      chartModeBtn.textContent = cur === 'weight' ? 'Gewicht-Ansicht' : 'Est. 1RM-Ansicht';
+      drawChart();
+    };
+  }
 
   const prevBtn=document.getElementById('prevMonth');
   const nextBtn=document.getElementById('nextMonth');
@@ -1671,8 +2019,11 @@ function saveActivityDetail(){
   }
 }
 function dayWorkoutBadge(iso){
-  const a=getSession(`${STORAGE_PREFIX}A:${iso}`); const b=getSession(`${STORAGE_PREFIX}B:${iso}`);
-  if(a&&b) return 'AB'; if(a) return 'A'; if(b) return 'B'; return null;
+  const ids = workoutsState.order || [];
+  const found = ids.filter(id => getSession(`${STORAGE_PREFIX}${id}:${iso}`));
+  if(!found.length) return null;
+  if(found.length === 1) return found[0];
+  return found.map(id => id.replace('Hypertrophie ','')).join('/');
 }
 function dayCell(txt,badge){
   const d=document.createElement('div'); d.className='day'; d.textContent=txt;
@@ -1686,13 +2037,28 @@ function computeRecaps(refDate){
   // Week
   $('#wkWorkouts').textContent = weekStats.sessions;
   $('#wkVolume').textContent = Math.round(weekStats.volume);
+  if($('#wkSets')) $('#wkSets').textContent = weekStats.sets;
   $('#wkAvgRPE').textContent = weekStats.avgRPE.toFixed(1);
-  $('#wkDelta').textContent = deltaStr(weekStats.volume, prevWeekStats.volume, 'Volumen');
+  const wkDeltaEl = $('#wkDelta');
+  if(wkDeltaEl){
+    const wkPct = prevWeekStats.volume > 0 ? ((weekStats.volume - prevWeekStats.volume) / prevWeekStats.volume * 100) : null;
+    wkDeltaEl.textContent = wkPct !== null ? (wkPct >= 0 ? '▲' : '▼') + ' ' + (wkPct >= 0 ? '+' : '') + wkPct.toFixed(0) + '% Volumen ggü. Vorwoche' : '–';
+    wkDeltaEl.className = 'delta' + (wkPct !== null ? (wkPct >= 0 ? ' delta-up' : ' delta-down') : '');
+  }
   // Month
   $('#moWorkouts').textContent = monthStats.sessions;
   $('#moVolume').textContent = Math.round(monthStats.volume);
+  if($('#moSets')) $('#moSets').textContent = monthStats.sets;
   $('#moAvgRPE').textContent = monthStats.avgRPE.toFixed(1);
-  $('#moDelta').textContent = deltaStr(monthStats.volume, prevMonthStats.volume, 'Volumen');
+  const moDeltaEl = $('#moDelta');
+  if(moDeltaEl){
+    const moPct = prevMonthStats.volume > 0 ? ((monthStats.volume - prevMonthStats.volume) / prevMonthStats.volume * 100) : null;
+    moDeltaEl.textContent = moPct !== null ? (moPct >= 0 ? '▲' : '▼') + ' ' + (moPct >= 0 ? '+' : '') + moPct.toFixed(0) + '% Volumen ggü. Vormonat' : '–';
+    moDeltaEl.className = 'delta' + (moPct !== null ? (moPct >= 0 ? ' delta-up' : ' delta-down') : '');
+  }
+  // Streak
+  const streakEl = $('#streakCount');
+  if(streakEl) streakEl.textContent = computeStreak();
 }
 function summarize(refDate){
   const days = allSessionsArray().filter(Boolean);
@@ -1712,10 +2078,13 @@ function summarize(refDate){
     let volume=0, sets=0, rpeSum=0, rpeN=0, sessions=new Set();
     arr.forEach(d=>{
       sessions.add(d.date);
-      (d.rows||[]).forEach(r=> r.sets?.forEach(s=>{
-        volume += (s.w||0)*(s.reps||0);
-        sets += 1;
-        if(s.rpe){ rpeSum += s.rpe; rpeN++; }
+      (d.rows||[]).forEach(r=> (r.sets||[]).forEach(s=>{
+        const w = +s.w||0, reps = +s.reps||0;
+        if(w > 0 || reps > 0){
+          volume += w * reps;
+          sets += 1;
+        }
+        if(s.rpe){ rpeSum += +s.rpe; rpeN++; }
       }));
     });
     return {volume, sets, avgRPE: rpeN? rpeSum/rpeN : 0, sessions: sessions.size};
@@ -1771,6 +2140,7 @@ function drawChart(){
   const bounds = getRangeBounds(rangeId);
 
   // Build datasets
+  const useOrm = document.getElementById('chartMode')?.dataset.mode === 'orm';
   const series=[]; let globalDates=new Set();
   const sessions = sessionEntries().map(entry=>entry.data);
   selected.forEach((ex,i)=>{
@@ -1779,9 +2149,11 @@ function drawChart(){
       if(!inBounds(data.date, bounds)) return;
       const row=data.rows?.find(r=>r.name===ex);
       if(!row) return;
-      const top = Math.max(...(row.sets||[]).map(s=>+s.w||0),0);
-      if(top>0){
-        hist.push({date:data.date,w:top});
+      let best = 0, bestReps = 0;
+      (row.sets||[]).forEach(s=>{ const w=+s.w||0; if(w>best){best=w;bestReps=+s.reps||0;} });
+      const val = useOrm ? epley(best, bestReps) : best;
+      if(val>0){
+        hist.push({date:data.date,w:val});
         if(data.date) globalDates.add(data.date);
       }
     });
