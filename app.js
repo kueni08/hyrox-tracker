@@ -223,38 +223,65 @@ function buildPRList(){
   </table>`;
 }
 
+function setupHiDPICanvas(canvas, cssWidth, cssHeight){
+  const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2.5));
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  canvas.style.width = cssWidth + 'px';
+  canvas.style.height = cssHeight + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return ctx;
+}
+
 function drawMuscleChart(){
   const c = document.getElementById('muscleChart');
   const sel = document.getElementById('muscleRange');
   if(!c) return;
-  const ctx = c.getContext('2d');
-  const rangeId = sel ? sel.value : '4w';
-  const data = computeMuscleVolume(rangeId);
+  const wrapper = c.parentElement;
+  const cssWidth = Math.max(280, Math.min(wrapper.clientWidth - 4, 600));
+  const data = computeMuscleVolume(sel ? sel.value : '4w');
   const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
-  ctx.clearRect(0, 0, c.width, c.height);
+  const cssHeight = Math.max(120, entries.length * 32 + 24);
+  const ctx = setupHiDPICanvas(c, cssWidth, cssHeight);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   if(!entries.length){
-    ctx.fillStyle = cssVar('--muted'); ctx.font = '13px system-ui';
-    ctx.fillText('Noch keine Trainingsdaten.', 12, 30); return;
+    ctx.fillStyle = cssVar('--muted');
+    ctx.font = '500 13px Montserrat, system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Noch keine Trainingsdaten.', cssWidth/2, cssHeight/2);
+    return;
   }
-  const pad = {l: 90, r: 16, t: 12, b: 16};
-  const w = c.width - pad.l - pad.r;
-  const barH = Math.min(28, (c.height - pad.t - pad.b) / entries.length - 4);
+  const pad = {l: 96, r: 20, t: 8, b: 8};
+  const w = cssWidth - pad.l - pad.r;
+  const barH = 22;
+  const gap = 8;
   const maxVal = entries[0][1];
   const colors = ['--c1','--c2','--c3','--c4','--c5','--c6'].map(cssVar);
   entries.forEach(([muscle, sets], i) => {
-    const y = pad.t + i * (barH + 6);
+    const y = pad.t + i * (barH + gap);
     const bw = maxVal > 0 ? (sets / maxVal) * w : 0;
+    // background track
+    ctx.fillStyle = cssVar('--border');
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(pad.l, y, w, barH, 6); else ctx.rect(pad.l, y, w, barH);
+    ctx.fill();
+    // bar
     ctx.fillStyle = colors[i % colors.length];
     ctx.beginPath();
-    if(ctx.roundRect) ctx.roundRect(pad.l, y, bw, barH, 3);
-    else ctx.rect(pad.l, y, bw, barH);
+    if(ctx.roundRect) ctx.roundRect(pad.l, y, Math.max(bw, 4), barH, 6); else ctx.rect(pad.l, y, bw, barH);
     ctx.fill();
-    ctx.fillStyle = cssVar('--fg');
-    ctx.font = '12px system-ui'; ctx.textAlign = 'right';
-    ctx.fillText(muscle, pad.l - 6, y + barH - 4);
+    // muscle label
+    ctx.fillStyle = cssVar('--text');
+    ctx.font = '600 12px Montserrat, system-ui';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(muscle, pad.l - 8, y + barH/2);
+    // value label
     ctx.textAlign = 'left';
     ctx.fillStyle = cssVar('--muted');
-    ctx.fillText(sets + ' Sätze', pad.l + bw + 4, y + barH - 4);
+    ctx.font = '600 11.5px Montserrat, system-ui';
+    ctx.fillText(sets + ' Sätze', pad.l + bw + 6, y + barH/2);
   });
 }
 
@@ -891,6 +918,16 @@ function bindControls(){
     }
   });
   window.addEventListener('beforeunload', ()=>{ if(dirty){ saveDay(true); } });
+  let resizeRAF = null;
+  window.addEventListener('resize', ()=>{
+    if(resizeRAF) cancelAnimationFrame(resizeRAF);
+    resizeRAF = requestAnimationFrame(()=>{
+      if(!tabOverview.classList.contains('hidden')){
+        drawChart();
+        drawMuscleChart();
+      }
+    });
+  });
 }
 
 // Autosave
@@ -2127,15 +2164,18 @@ function inBounds(dateStr, bounds){
 function drawChart(){
   const c=document.getElementById('chart'); const exSel=document.getElementById('exSelect'); const legend = document.getElementById('legend');
   if(!c || !exSel) return;
-  const ctx=c.getContext('2d');
-  ctx.clearRect(0,0,c.width,c.height);
+  const wrapper = c.parentElement;
+  const cssWidth = Math.max(280, Math.min(wrapper ? wrapper.clientWidth - 4 : 600, 900));
+  const cssHeight = Math.min(320, Math.max(220, cssWidth * 0.45));
+  const ctx = setupHiDPICanvas(c, cssWidth, cssHeight);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
   legend.innerHTML='';
 
   const selected=[...exSel.selectedOptions].map(o=>o.value);
-  if(selected.length===0){ ctx.fillStyle=cssVar('--muted'); ctx.fillText('Wähle eine oder mehrere Übungen.',20,24); document.getElementById('aggScore').textContent='–'; return; }
+  if(selected.length===0){ ctx.fillStyle=cssVar('--muted'); ctx.font='500 13px Montserrat, system-ui'; ctx.textAlign='left'; ctx.fillText('Wähle eine oder mehrere Übungen.',20,30); document.getElementById('aggScore').textContent='–'; return; }
 
   const colors = ['--c1','--c2','--c3','--c4','--c5','--c6'].map(cssVar);
-  const pad={l:42,r:6,t:10,b:28}, w=c.width-pad.l-pad.r, h=c.height-pad.t-pad.b;
+  const pad={l:42,r:8,t:12,b:30}, w=cssWidth-pad.l-pad.r, h=cssHeight-pad.t-pad.b;
   const rangeId = statRangeSel?.value || '4w';
   const bounds = getRangeBounds(rangeId);
 
