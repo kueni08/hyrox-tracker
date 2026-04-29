@@ -29,6 +29,11 @@ const EXERCISE_LIBRARY = [
   "Farmer's Carry",
   "Sandbag Lunges",
   "Burpee Broad Jumps",
+  "Skierg Aufwärmen",
+  "Skierg 1min Intervall",
+  "Skierg Cool-down",
+  "Dips Maschine",
+  "Kabelrudern enger Griff",
   "SkiErg 1000 m",
   "RowErg 1000 m",
   "Air Bike",
@@ -69,10 +74,12 @@ const MUSCLE_GROUP_MAP = {
   "Schrägbank KH Drücken":              "Brust",
   "Brustfliegende (Kabel/Maschine)":    "Brust",
   "Brustpresse Maschine":               "Brust",
+  "Dips Maschine":                      "Trizeps",
   "Latzug (neutraler Griff)":           "Rücken",
   "Lat Pulldown breiter Griff":         "Rücken",
   "Lat Pulldown enger Griff":           "Rücken",
   "Kabelrudern (enger Griff)":          "Rücken",
+  "Kabelrudern enger Griff":            "Rücken",
   "Rudern Maschine":                    "Rücken",
   "Rückenstrecker":                     "Rücken",
   "Kreuzheben":                         "Rücken",
@@ -98,6 +105,9 @@ const MUSCLE_GROUP_MAP = {
   "Glute Kickback Kabel":               "Gesäss",
   "Cable Crunch kniend":                "Bauch",
   "Russian Twists (gesamt)":            "Bauch",
+  "Skierg Aufwärmen":                   "Kondition",
+  "Skierg 1min Intervall":              "Kondition",
+  "Skierg Cool-down":                   "Kondition",
 };
 
 function epley(w, r){
@@ -167,15 +177,14 @@ function checkPlateau(exerciseName, workoutId){
     const row = (sess.rows || []).find(r => r.name === exerciseName);
     if(row && row.sets && row.sets.length){
       const topW = Math.max(...row.sets.map(s => +s.w || 0));
-      const avgRPE = row.sets.reduce((acc, s) => acc + (+s.rpe || 0), 0) / row.sets.length;
-      if(topW > 0) relevant.push({topW, avgRPE});
+      if(topW > 0) relevant.push({topW});
     }
     if(relevant.length >= 3) break;
   }
   if(relevant.length < 3) return null;
   const weights = relevant.map(r => r.topW);
   if(weights[0] === weights[1] && weights[1] === weights[2]) return 'plateau';
-  if(relevant[0].avgRPE > 0 && relevant[0].avgRPE <= 6) return 'ready';
+  if(weights[0] > weights[1]) return 'ready';
   return null;
 }
 
@@ -287,7 +296,7 @@ function drawMuscleChart(){
 
 const DEFAULT_WORKOUTS = {
   version: 1,
-  order: ['A','B','HA','HB','HC'],
+  order: ['A','B','HA','HB','HC','HV'],
   map: {
     A: {
       id: 'A',
@@ -321,46 +330,56 @@ const DEFAULT_WORKOUTS = {
     },
     HA: {
       id: 'HA',
-      label: 'Hypertrophie A – Push',
-      name: 'Hypertrophie A – Push',
+      label: 'Upper A – Push',
+      name: 'Upper A – Push',
       exercises: [
-        {name:"Bankdrücken", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
-        {name:"Schrägbank KH Drücken", sets:3, reps:[10,10,10], technique:""},
-        {name:"Schulterdrücken Maschine", sets:3, reps:[10,10,10], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
-        {name:"Seitheben sitzend", sets:3, reps:[12,12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
-        {name:"Trizeps Pushdown Kabel", sets:3, reps:[12,12,12], technique:""},
-        {name:"Beinstrecker Maschine", sets:3, reps:[10,10,10], technique:""},
-        {name:"Cable Crunch kniend", sets:3, reps:[12,12,12], technique:""}
+        {name:"Bankdrücken", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/bankdruecken/"},
+        {name:"Schrägbank KH Drücken", sets:2, reps:[8,8], technique:""},
+        {name:"Schulterdrücken Maschine", sets:2, reps:[8,8], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
+        {name:"Seitheben sitzend", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
+        {name:"Trizeps Pushdown Kabel", sets:2, reps:[10,10], technique:""},
+        {name:"Dips Maschine", sets:2, reps:[8,8], technique:""},
+        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
       ]
     },
     HB: {
       id: 'HB',
-      label: 'Hypertrophie B – Pull',
-      name: 'Hypertrophie B – Pull',
+      label: 'Upper B – Pull',
+      name: 'Upper B – Pull',
       exercises: [
-        {name:"Lat Pulldown breiter Griff", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/latzug/"},
-        {name:"Rudern Maschine", sets:3, reps:[10,10,10], technique:""},
-        {name:"Reverse Pec Deck", sets:3, reps:[12,12,12], technique:""},
-        {name:"Face Pulls Kabel sitzend", sets:3, reps:[12,12,12], technique:""},
-        {name:"Bizeps Curl SZ-Stange", sets:3, reps:[10,10,10], technique:""},
-        {name:"Hammer Curl sitzend", sets:3, reps:[12,12,12], technique:""},
-        {name:"Beincurl liegend Maschine", sets:3, reps:[10,10,10], technique:""},
-        {name:"Cable Crunch kniend", sets:3, reps:[12,12,12], technique:""}
+        {name:"Lat Pulldown breiter Griff", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/latzug/"},
+        {name:"Rudern Maschine", sets:2, reps:[8,8], technique:""},
+        {name:"Kabelrudern enger Griff", sets:2, reps:[8,8], technique:"https://modusx.de/fitness-uebungen/kabelrudern/"},
+        {name:"Reverse Pec Deck", sets:2, reps:[10,10], technique:""},
+        {name:"Face Pulls Kabel sitzend", sets:2, reps:[10,10], technique:""},
+        {name:"Bizeps Curl SZ-Stange", sets:2, reps:[8,8], technique:""},
+        {name:"Hammer Curl sitzend", sets:2, reps:[10,10], technique:""},
+        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
       ]
     },
     HC: {
       id: 'HC',
-      label: 'Hypertrophie C – Glutes',
-      name: 'Hypertrophie C – Glutes',
+      label: 'Lower – Maschinen',
+      name: 'Lower – Maschinen',
       exercises: [
-        {name:"Hip Thrust Maschine", sets:4, reps:[8,8,8,8], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
-        {name:"Glute Kickback Kabel", sets:3, reps:[12,12,12], technique:""},
-        {name:"Abduktoren Maschine", sets:3, reps:[12,12,12], technique:""},
-        {name:"Adduktoren Maschine", sets:3, reps:[12,12,12], technique:""},
-        {name:"Beinstrecker einbeinig", sets:3, reps:[10,10,10], technique:""},
-        {name:"Brustpresse Maschine", sets:3, reps:[10,10,10], technique:""},
-        {name:"Lat Pulldown enger Griff", sets:3, reps:[10,10,10], technique:"https://modusx.de/fitness-uebungen/latzug/"},
-        {name:"Seitheben einarmig Kabel", sets:3, reps:[12,12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"}
+        {name:"Hip Thrust Maschine", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
+        {name:"Beinstrecker Maschine", sets:2, reps:[8,8], technique:""},
+        {name:"Beincurl liegend Maschine", sets:2, reps:[8,8], technique:""},
+        {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:""},
+        {name:"Adduktoren Maschine", sets:2, reps:[12,12], technique:""},
+        {name:"Glute Kickback Kabel", sets:2, reps:[10,10], technique:""},
+        {name:"Beinstrecker einbeinig", sets:2, reps:[10,10], technique:""},
+        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
+      ]
+    },
+    HV: {
+      id: 'HV',
+      label: 'VO2max – Skierg',
+      name: 'VO2max – Skierg',
+      exercises: [
+        {name:"Skierg Aufwärmen", sets:1, reps:[5], technique:"", unit:"m"},
+        {name:"Skierg 1min Intervall", sets:8, reps:[1,1,1,1,1,1,1,1], technique:"", unit:"m"},
+        {name:"Skierg Cool-down", sets:1, reps:[5], technique:"", unit:"m"}
       ]
     }
   }
@@ -474,7 +493,11 @@ function normalizeWorkouts(raw){
     resultMap[key] = normalized;
     resultOrder.push(key);
   };
-  sourceOrder.forEach(id=>{ appendWorkout(id, base.map?.[id] || DEFAULT_WORKOUTS.map[id]); });
+  const SYSTEM_IDS = ['HA','HB','HC','HV'];
+  sourceOrder.forEach(id=>{
+    const data = SYSTEM_IDS.includes(id) ? DEFAULT_WORKOUTS.map[id] : (base.map?.[id] || DEFAULT_WORKOUTS.map[id]);
+    appendWorkout(id, data);
+  });
   Object.keys(base.map||{}).forEach(id=>{ appendWorkout(id, base.map[id]); });
   DEFAULT_WORKOUTS.order.forEach(id=>{ if(!seen.has(id)){ appendWorkout(id, DEFAULT_WORKOUTS.map[id]); } });
   return { version:1, order: resultOrder, map: resultMap };
@@ -488,7 +511,8 @@ function normalizeExercises(arr){
       name: normalizeExerciseName(ex?.name || ex?.n || ''),
       sets: normalizeSets(ex?.sets, repsArray.length),
       reps: repsArray,
-      technique: (ex?.technique || ex?.t || '').trim()
+      technique: (ex?.technique || ex?.t || '').trim(),
+      unit: (ex?.unit || 'kg')
     };
   });
 }
@@ -506,11 +530,11 @@ function normalizeSessionData(session){
     const sets = Array.isArray(row.sets)? row.sets.map(set=>{
       const w = Number(set?.w);
       const reps = Number(set?.reps);
-      const rpe = Number(set?.rpe);
+      const pause = Number(set?.pause);
       return {
         w: Number.isFinite(w)? w : 0,
         reps: Number.isFinite(reps)? reps : 0,
-        rpe: Number.isFinite(rpe)? rpe : 0
+        pause: Number.isFinite(pause)? pause : 0
       };
     }) : [];
     if(!seen.has(name)){
@@ -531,7 +555,7 @@ function rowsSignature(rows){
     sets: (row?.sets||[]).map(set=>({
       w: Number.isFinite(Number(set?.w))? Number(set?.w) : 0,
       reps: Number.isFinite(Number(set?.reps))? Number(set?.reps) : 0,
-      rpe: Number.isFinite(Number(set?.rpe))? Number(set?.rpe) : 0
+      pause: Number.isFinite(Number(set?.pause))? Number(set?.pause) : 0
     }))
   })));
 }
@@ -1481,14 +1505,11 @@ function lastTopSet(exName){
     (data.rows||[]).forEach(r=>{
       if(r.name!==target) return;
       const top = Math.max(...(r.sets||[]).map(s=>+s.w||0),0);
-      const topRPE = (r.sets||[]).reduce((a,s)=> Math.max(a, +s.rpe||0), 0);
-      if(top>0){ hist.push({date:data.date, w:top, rpe:topRPE}); }
+      if(top>0){ hist.push({date:data.date, w:top}); }
     });
   });
   hist.sort((a,b)=> a.date.localeCompare(b.date));
   const last = hist[hist.length-1]; if(!last) return 0;
-  if(last.rpe<=8) return Math.round(last.w*1.025*2)/2;
-  if(last.rpe>9) return Math.round(last.w*0.975*2)/2;
   return last.w;
 }
 
@@ -1500,7 +1521,7 @@ function collect(){
     const sets=[];
     rows.forEach(g=>{
       const get=k=>g.querySelector(`[data-k='${k}']`)?.value||'';
-      sets.push({w:+get('w')||0, reps:+get('reps')||0, rpe:+get('rpe')||0});
+      sets.push({w:+get('w')||0, reps:+get('reps')||0, pause:+get('pause')||0});
     });
     day.rows.push({name:normalizeExerciseName(ex.name), sets});
   });
@@ -1572,12 +1593,14 @@ function renderTracker(){
       </div>
       <div class="setgrid hdr">
         <div class="hdr">Satz</div>
-        <div class="hdr">Gewicht</div>
+        <div class="hdr">Gewicht (${ex.unit||'kg'})</div>
         <div class="hdr">Vorschlag</div>
         <div class="hdr">Wdh.</div>
-        <div class="hdr">RPE</div>
+        <div class="hdr">Pause s</div>
         <div class="hdr"></div>
       </div>`;
+    const unit = ex.unit || 'kg';
+    const wStep = unit === 'kg' ? '0.5' : '1';
     for(let s=0;s<setCount;s++){
       const recentSets = last || [];
       const histSet = recentSets[s] ?? null;
@@ -1586,14 +1609,14 @@ function renderTracker(){
       const sugg = histSet?.w ?? lastTopSet(ex.name);
       const weightVal = histSet?.w ?? (sugg ?? '');
       const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
-      const rpeVal = histSet?.rpe ?? '';
-      const isPR = prWeight > 0 && weightVal > prWeight;
+      const pauseVal = histSet?.pause ?? '';
+      const isPR = unit === 'kg' && prWeight > 0 && weightVal > prWeight;
       html += `<div class="setgrid" data-idx="${idx}" data-set="${s}">
         <div>${s+1}</div>
-        <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}" ${isPR ? 'class="pr-input"' : ''}></div>
-        <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
+        <div><input type="number" step="${wStep}" data-k="w" value="${weightVal ?? ''}" ${isPR ? 'class="pr-input"' : ''}></div>
+        <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' '+unit): ''}" readonly></div>
         <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
-        <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${rpeVal ?? ''}"></div>
+        <div><input type="number" step="15" data-k="pause" placeholder="90" value="${pauseVal ?? ''}"></div>
         <div class="pr-flag">${isPR ? '<span class="pr-badge">PR!</span>' : ''}</div>
       </div>`;
     }
@@ -1663,11 +1686,12 @@ function renderTracker(){
     if(!ex) return;
     const last = lastSetsFor(ex.name) || [];
     const top = lastTopSet(ex.name);
+    const unit = ex.unit || 'kg';
     tabTracker.querySelectorAll(`.setgrid[data-idx='${idx}']`).forEach((row, setIdx)=>{
       const histSet = last[setIdx] ?? null;
       const sugg = histSet?.w ?? top;
       row.querySelector(`[data-k='w']`).value = sugg ?? '';
-      row.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' kg') : '';
+      row.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' '+unit) : '';
     });
     updateLiveStats();
     markDirty(); toast('Vorschlag aktualisiert');
@@ -1689,14 +1713,16 @@ function addSetRow(idx){
   const sugg = histSet?.w ?? lastTopSet(ex.name);
   const weightVal = histSet?.w ?? (sugg ?? '');
   const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
-  const rpeVal = histSet?.rpe ?? '';
+  const pauseVal = histSet?.pause ?? '';
+  const unit = ex.unit || 'kg';
+  const wStep = unit === 'kg' ? '0.5' : '1';
   const row = document.createElement('div');
   row.className='setgrid'; row.dataset.idx=idx; row.dataset.set=s;
   row.innerHTML = `<div>${s+1}</div>
-    <div><input type="number" step="0.5" data-k="w" value="${weightVal ?? ''}"></div>
-    <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' kg'): ''}" readonly></div>
+    <div><input type="number" step="${wStep}" data-k="w" value="${weightVal ?? ''}"></div>
+    <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' '+unit): ''}" readonly></div>
     <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
-    <div><input type="number" step="0.5" data-k="rpe" placeholder="8–9" value="${rpeVal ?? ''}"></div>`;
+    <div><input type="number" step="15" data-k="pause" placeholder="90" value="${pauseVal ?? ''}"></div>`;
   card.appendChild(row);
 }
 function removeLastSet(idx){
@@ -1716,12 +1742,14 @@ function onLoadDay(){
     for(let i=current;i<needed;i++){ addSetRow(idx); }
     const history = lastSetsFor(row.name) || [];
     const top = lastTopSet(row.name);
+    const exObj = getWorkoutExercises(workoutSel.value)[idx];
+    const unit = exObj?.unit || 'kg';
     row.sets?.forEach((s,si)=>{
       const g=card.querySelector(`.setgrid[data-idx='${idx}'][data-set='${si}']`); if(!g) return;
-      g.querySelector(`[data-k='w']`).value=s.w||''; g.querySelector(`[data-k='reps']`).value=s.reps||''; g.querySelector(`[data-k='rpe']`).value=s.rpe||'';
+      g.querySelector(`[data-k='w']`).value=s.w||''; g.querySelector(`[data-k='reps']`).value=s.reps||''; g.querySelector(`[data-k='pause']`).value=s.pause||'';
       const histSet = history[si] ?? null;
       const sugg = histSet?.w ?? top;
-      g.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' kg'): '';
+      g.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' '+unit): '';
     });
   });
 }
@@ -1876,7 +1904,7 @@ function normalizeDetailState(session){
       sets: (row?.sets||[]).map(set=>({
         w: +set?.w || 0,
         reps: +set?.reps || 0,
-        rpe: +set?.rpe || 0
+        pause: +set?.pause || 0
       }))
     }))
   };
@@ -1919,7 +1947,7 @@ function renderActivityDetail(){
         <div>${si+1}</div>
         <input type="number" step="0.5" data-field="w" value="${set.w||''}" />
         <input type="number" step="1" data-field="reps" value="${set.reps||''}" />
-        <input type="number" step="0.5" data-field="rpe" value="${set.rpe||''}" />
+        <input type="number" step="15" data-field="pause" placeholder="90" value="${set.pause||''}" />
         <button class="btn ghost" data-detail="remove-set">−</button>
       </div>`;
     }).join('');
@@ -1985,7 +2013,7 @@ function onActivityDetailChange(evt){
   if(isNaN(setIdx) || !activeDetailState.rows[rowIdx].sets[setIdx]) return;
   if(field==='w'){ activeDetailState.rows[rowIdx].sets[setIdx].w = parseFloat(target.value)||0; }
   if(field==='reps'){ activeDetailState.rows[rowIdx].sets[setIdx].reps = parseInt(target.value,10)||0; }
-  if(field==='rpe'){ activeDetailState.rows[rowIdx].sets[setIdx].rpe = parseFloat(target.value)||0; }
+  if(field==='pause'){ activeDetailState.rows[rowIdx].sets[setIdx].pause = parseFloat(target.value)||0; }
 }
 
 function onActivityDetailClick(evt){
@@ -1996,7 +2024,7 @@ function onActivityDetailClick(evt){
   if(action==='cancel'){ closeActivityDetail(); return; }
   if(action==='save'){ saveActivityDetail(); return; }
   if(action==='add-row'){
-    activeDetailState.rows.push({ name:'', sets:[{w:0,reps:0,rpe:0}] });
+    activeDetailState.rows.push({ name:'', sets:[{w:0,reps:0,pause:0}] });
     renderActivityDetail();
     return;
   }
@@ -2010,7 +2038,7 @@ function onActivityDetailClick(evt){
     return;
   }
   if(action==='add-set'){
-    activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,rpe:0});
+    activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,pause:0});
     renderActivityDetail();
     return;
   }
@@ -2021,7 +2049,7 @@ function onActivityDetailClick(evt){
     if(isNaN(setIdx)) return;
     activeDetailState.rows[rowIdx].sets.splice(setIdx,1);
     if(activeDetailState.rows[rowIdx].sets.length===0){
-      activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,rpe:0});
+      activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,pause:0});
     }
     renderActivityDetail();
   }
@@ -2033,7 +2061,7 @@ function saveActivityDetail(){
   const workoutId = getWorkout(activeDetailState.workout) ? activeDetailState.workout : (workoutsState.order[0]||'');
   const rows = (activeDetailState.rows||[]).map(row=>({
     name: normalizeExerciseName(row.name),
-    sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0 || (set.rpe||0)!==0)
+    sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0 || (set.pause||0)!==0)
   })).filter(row=>row.name && row.sets.length>0);
   if(!rows.length){ toast('Bitte erfasse mindestens einen Satz.'); return; }
   const payload={ date, workout: workoutId, rows };
@@ -2075,7 +2103,7 @@ function computeRecaps(refDate){
   $('#wkWorkouts').textContent = weekStats.sessions;
   $('#wkVolume').textContent = Math.round(weekStats.volume);
   if($('#wkSets')) $('#wkSets').textContent = weekStats.sets;
-  $('#wkAvgRPE').textContent = weekStats.avgRPE.toFixed(1);
+  if($('#wkAvgRPE')) $('#wkAvgRPE').textContent = weekStats.sets;
   const wkDeltaEl = $('#wkDelta');
   if(wkDeltaEl){
     const wkPct = prevWeekStats.volume > 0 ? ((weekStats.volume - prevWeekStats.volume) / prevWeekStats.volume * 100) : null;
@@ -2086,7 +2114,7 @@ function computeRecaps(refDate){
   $('#moWorkouts').textContent = monthStats.sessions;
   $('#moVolume').textContent = Math.round(monthStats.volume);
   if($('#moSets')) $('#moSets').textContent = monthStats.sets;
-  $('#moAvgRPE').textContent = monthStats.avgRPE.toFixed(1);
+  if($('#moAvgRPE')) $('#moAvgRPE').textContent = monthStats.sets;
   const moDeltaEl = $('#moDelta');
   if(moDeltaEl){
     const moPct = prevMonthStats.volume > 0 ? ((monthStats.volume - prevMonthStats.volume) / prevMonthStats.volume * 100) : null;
@@ -2112,7 +2140,7 @@ function summarize(refDate){
 
   const filt = (from,to)=> days.filter(x=> x.date && (new Date(x.date)>=from) && (new Date(x.date)<to));
   const mk = (arr)=>{
-    let volume=0, sets=0, rpeSum=0, rpeN=0, sessions=new Set();
+    let volume=0, sets=0, sessions=new Set();
     arr.forEach(d=>{
       sessions.add(d.date);
       (d.rows||[]).forEach(r=> (r.sets||[]).forEach(s=>{
@@ -2121,10 +2149,9 @@ function summarize(refDate){
           volume += w * reps;
           sets += 1;
         }
-        if(s.rpe){ rpeSum += +s.rpe; rpeN++; }
       }));
     });
-    return {volume, sets, avgRPE: rpeN? rpeSum/rpeN : 0, sessions: sessions.size};
+    return {volume, sets, sessions: sessions.size};
   };
   return {
     weekStats: mk(filt(weekStart, weekEnd)),
@@ -2254,11 +2281,11 @@ function aggregateProgress(series){
 
 // Export CSV
 function onExportCSV(){
-  const rows=["Datum;Workout;Übung;Satz;Gewicht;Wdh.;RPE"];
+  const rows=["Datum;Workout;Übung;Satz;Gewicht;Wdh.;Pause"];
   sessionEntries().sort((a,b)=>a.key.localeCompare(b.key)).forEach(({data})=>{
     (data.rows||[]).forEach(r=>{
       (r.sets||[]).forEach((s,si)=>{
-        rows.push([data.date,data.workout,r.name,si+1,s.w||'',s.reps||'',s.rpe||''].join(';'));
+        rows.push([data.date,data.workout,r.name,si+1,s.w||'',s.reps||'',s.pause||''].join(';'));
       });
     });
   });
@@ -2304,7 +2331,7 @@ function parseImportCSV(text){
   lines.forEach(line=>{
     const parts=line.split(';');
     if(parts.length<3) return;
-    const [date, workout, exercise, setIdx, weight, reps, rpe]=parts.map(p=>p.trim());
+    const [date, workout, exercise, setIdx, weight, reps, pause]=parts.map(p=>p.trim());
     if(!date || !workout || !exercise) return;
     const key=`hyrox:${workout}:${date}`;
     if(!sessionsMap.has(key)){
@@ -2319,7 +2346,7 @@ function parseImportCSV(text){
     row.sets[idx]={
       w: parseNumber(weight),
       reps: parseIntSafe(reps),
-      rpe: parseNumber(rpe)
+      pause: parseNumber(pause)
     };
   });
   return [...sessionsMap.values()].map(session=>({
@@ -2330,7 +2357,7 @@ function parseImportCSV(text){
       sets: row.sets.filter(Boolean).map(set=>({
         w: set?.w||0,
         reps: set?.reps||0,
-        rpe: set?.rpe||0
+        pause: set?.pause||0
       }))
     }))
   })).filter(session=>session.rows.length>0);
