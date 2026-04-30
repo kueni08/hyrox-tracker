@@ -1987,6 +1987,7 @@ function closeFocusMode(finished){
 function renderFocusPreFlight(exercises){
   document.getElementById('focusPreFlight')?.classList.remove('hidden');
   document.getElementById('focusSetView')?.classList.add('hidden');
+  document.getElementById('focusActionArea')?.classList.add('hidden');
   document.getElementById('focusExNav')?.classList.add('hidden');
 
   const prog = focusProgressEl(); if(prog) prog.textContent = '';
@@ -2016,6 +2017,7 @@ function renderFocusPreFlight(exercises){
 function startFocusSession(){
   document.getElementById('focusPreFlight')?.classList.add('hidden');
   document.getElementById('focusSetView')?.classList.remove('hidden');
+  document.getElementById('focusActionArea')?.classList.remove('hidden');
   document.getElementById('focusExNav')?.classList.remove('hidden');
 
   focusStartTime = Date.now();
@@ -2100,6 +2102,7 @@ function renderFocusAllSets(ex, row, unit, hist){
 function renderFocusActionComplete(){
   const area = document.getElementById('focusActionArea');
   if(!area) return;
+  area.classList.remove('hidden');
   area.innerHTML = `<button class="focus-cta-btn focus-complete-btn">Satz abschließen ›</button>`;
   area.querySelector('.focus-complete-btn').addEventListener('click', completeFocusSet);
 }
@@ -2107,6 +2110,7 @@ function renderFocusActionComplete(){
 function renderFocusActionPause(remaining){
   const area = document.getElementById('focusActionArea');
   if(!area) return;
+  area.classList.remove('hidden');
   area.innerHTML = `
     <div class="focus-pause-inline">
       <span class="focus-pause-icon">⏱</span>

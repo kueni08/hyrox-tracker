@@ -88,14 +88,15 @@
         </div>
         <!-- All sets rendered dynamically here -->
         <div id="focusSetsContainer" class="focus-sets-container"></div>
-        <!-- Action: "Satz abschließen" or countdown pause -->
-        <div id="focusActionArea" class="focus-action-area"></div>
         <!-- All remaining exercises -->
         <div class="focus-upcoming-section">
           <div class="focus-history-label" id="focusUpcomingLabel">Nächste Übungen</div>
           <div id="focusUpcoming" class="focus-upcoming-list"></div>
         </div>
       </div>
+
+      <!-- Action footer: "Satz abschließen" or countdown — always visible, never scrolls -->
+      <div id="focusActionArea" class="focus-action-footer hidden"></div>
 
       <!-- Exercise navigation footer -->
       <div id="focusExNav" class="focus-ex-nav hidden">
