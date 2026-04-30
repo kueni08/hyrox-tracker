@@ -56,21 +56,77 @@
     <!-- FOCUS MODE OVERLAY -->
     <section id="focusMode" class="focus-overlay hidden" aria-modal="true">
       <div class="focus-topbar">
-        <button id="focusClose" class="focus-close-btn" title="Übersicht">✕</button>
-        <div class="focus-progress">
-          <span id="focusProgressText"></span>
-        </div>
+        <div id="focusProgressText" class="focus-progress-text"></div>
         <div id="focusTimer" class="focus-timer">0 min</div>
+        <button id="focusClose" class="focus-close-btn" title="Schließen">✕</button>
       </div>
-      <div class="focus-body">
-        <div id="focusHero" class="focus-hero"></div>
-        <div class="focus-next-label">Nächste Übungen</div>
-        <div id="focusPreviews" class="focus-previews"></div>
+
+      <!-- Pre-flight: exercise overview before training starts -->
+      <div id="focusPreFlight" class="focus-section">
+        <div class="focus-pf-summary">
+          <div class="focus-pf-stat">
+            <div class="focus-pf-stat-label">Übungen</div>
+            <div class="focus-pf-stat-value" id="focusPfExCount">0</div>
+          </div>
+          <div class="focus-pf-stat">
+            <div class="focus-pf-stat-label">Sätze gesamt</div>
+            <div class="focus-pf-stat-value" id="focusPfSetCount">0</div>
+          </div>
+        </div>
+        <div id="focusPfList" class="focus-pf-list"></div>
+        <div class="focus-pf-footer">
+          <button id="focusPfStart" class="focus-cta-btn">▷ Training starten</button>
+        </div>
       </div>
-      <div class="focus-footer">
-        <button id="focusPrevBtn" class="focus-nav-btn">◀ Zurück</button>
-        <button id="focusSkipBtn" class="focus-nav-btn focus-skip">Überspringen</button>
-        <button id="focusNextBtn" class="focus-nav-btn focus-next">Weiter ▶</button>
+
+      <!-- Set view: one set at a time -->
+      <div id="focusSetView" class="focus-section hidden">
+        <div class="focus-ex-header">
+          <div class="focus-ex-emoji" id="focusExEmoji">🏋️</div>
+          <div class="focus-ex-name" id="focusExName"></div>
+          <div class="focus-ex-note" id="focusExNote"></div>
+        </div>
+        <div class="focus-set-card">
+          <div class="focus-set-stats">
+            <div>
+              <div class="focus-stat-label">Aktueller Satz</div>
+              <div class="focus-stat-value" id="focusSetProgress">1/1</div>
+            </div>
+            <div class="focus-set-stats-right">
+              <div class="focus-stat-label">Wiederholungen</div>
+              <div class="focus-stat-value focus-stat-white" id="focusTargetReps">–</div>
+            </div>
+          </div>
+          <div class="focus-weight-row">
+            <div class="focus-last-weight-card">
+              <div class="focus-wcard-label">Letztes Mal</div>
+              <div class="focus-wcard-value" id="focusLastWeight">–</div>
+            </div>
+            <div class="focus-curr-weight-card">
+              <div class="focus-wcard-label">Aktuelles Gewicht</div>
+              <div class="focus-wcard-input-row">
+                <input id="focusCurrWeight" type="number" step="0.5" inputmode="decimal" placeholder="0" />
+                <span id="focusCurrUnit" class="focus-curr-unit">kg</span>
+              </div>
+            </div>
+          </div>
+          <button id="focusCompleteSet" class="focus-cta-btn">Satz abschließen ›</button>
+        </div>
+        <div id="focusPauseCard" class="focus-pause-card hidden">
+          <div class="focus-pause-icon">⏱</div>
+          <div class="focus-pause-label">Pause</div>
+          <div class="focus-pause-sec" id="focusPauseSec">0s</div>
+        </div>
+        <div class="focus-history">
+          <div class="focus-history-label">Gewichte vom letzten Training</div>
+          <div class="focus-history-chips" id="focusHistoryChips"></div>
+        </div>
+      </div>
+
+      <!-- Exercise navigation footer -->
+      <div id="focusExNav" class="focus-ex-nav hidden">
+        <button id="focusPrevExBtn" class="focus-nav-ghost">◀ Vorherige</button>
+        <button id="focusSkipExBtn" class="focus-nav-ghost">Überspringen</button>
       </div>
     </section>
 
