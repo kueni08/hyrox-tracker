@@ -575,11 +575,9 @@ function normalizeSessionData(session){
     const sets = Array.isArray(row.sets)? row.sets.map(set=>{
       const w = Number(set?.w);
       const reps = Number(set?.reps);
-      const pause = Number(set?.pause);
       return {
         w: Number.isFinite(w)? w : 0,
-        reps: Number.isFinite(reps)? reps : 0,
-        pause: Number.isFinite(pause)? pause : 0
+        reps: Number.isFinite(reps)? reps : 0
       };
     }) : [];
     if(!seen.has(name)){
@@ -599,8 +597,7 @@ function rowsSignature(rows){
     name: normalizeExerciseName(row?.name || ''),
     sets: (row?.sets||[]).map(set=>({
       w: Number.isFinite(Number(set?.w))? Number(set?.w) : 0,
-      reps: Number.isFinite(Number(set?.reps))? Number(set?.reps) : 0,
-      pause: Number.isFinite(Number(set?.pause))? Number(set?.pause) : 0
+      reps: Number.isFinite(Number(set?.reps))? Number(set?.reps) : 0
     }))
   })));
 }
@@ -965,6 +962,7 @@ function bindTabs(){
 
 function bindControls(){
   $('#save')?.addEventListener('click', ()=>saveDay(false));
+  $('#focusStartBtn')?.addEventListener('click', openFocusMode);
   $('#export')?.addEventListener('click', onExportCSV);
   importBtn?.addEventListener('click', ()=>importInput?.click());
   importInput?.addEventListener('change', handleImportCSV);
@@ -1592,7 +1590,7 @@ function collect(){
     const sets=[];
     rows.forEach(g=>{
       const get=k=>g.querySelector(`[data-k='${k}']`)?.value||'';
-      sets.push({w:+get('w')||0, reps:+get('reps')||0, pause:+get('pause')||0});
+      sets.push({w:+get('w')||0, reps:+get('reps')||0});
     });
     day.rows.push({name:normalizeExerciseName(ex.name), sets});
   });
@@ -1652,7 +1650,7 @@ function renderTracker(){
           <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
           ${plateauBadge}
         </div>
-        ${ex.note ? `<div class="exercise-note">${escapeHtml(ex.note)}</div>` : ''}
+        ${ex.note ? `<input type="text" class="exercise-note-input" data-note-idx="${idx}" value="${escapeHtml(ex.note)}" placeholder="Notiz..." />` : ''}
         <div class="exercise-meta">
           <span class="orm-display" id="orm-${idx}"></span>
         </div>
@@ -1668,7 +1666,6 @@ function renderTracker(){
         <div class="hdr">Gewicht (${ex.unit||'kg'})</div>
         <div class="hdr">Vorschlag</div>
         <div class="hdr">Wdh.</div>
-        <div class="hdr">Pause s</div>
         <div class="hdr"></div>
       </div>`;
     const unit = ex.unit || 'kg';
@@ -1681,14 +1678,12 @@ function renderTracker(){
       const sugg = histSet?.w ?? lastTopSet(ex.name);
       const weightVal = histSet?.w ?? (sugg ?? '');
       const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
-      const pauseVal = histSet?.pause ?? '';
       const isPR = unit === 'kg' && prWeight > 0 && weightVal > prWeight;
       html += `<div class="setgrid" data-idx="${idx}" data-set="${s}">
         <div>${s+1}</div>
         <div><input type="number" step="${wStep}" data-k="w" value="${weightVal ?? ''}" ${isPR ? 'class="pr-input"' : ''}></div>
         <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' '+unit): ''}" readonly></div>
         <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
-        <div><input type="number" step="15" data-k="pause" placeholder="90" value="${pauseVal ?? ''}"></div>
         <div class="pr-flag">${isPR ? '<span class="pr-badge">PR!</span>' : ''}</div>
       </div>`;
     }
@@ -1769,6 +1764,14 @@ function renderTracker(){
     markDirty(); toast('Vorschlag aktualisiert');
   }));
   tabTracker.querySelectorAll('[data-act="addset"]').forEach(btn=>btn.addEventListener('click', ()=>{ addSetRow(+btn.dataset.idx); markDirty(); }));
+  tabTracker.querySelectorAll('.exercise-note-input').forEach(inp=>inp.addEventListener('change', ()=>{
+    const idx = +inp.dataset.noteIdx;
+    const exercises = getWorkoutExercises(workoutSel.value);
+    const ex = exercises[idx];
+    if(!ex) return;
+    workoutsState.map[workoutSel.value].exercises[idx].note = inp.value.trim();
+    saveWorkoutsState();
+  }));
   tabTracker.querySelectorAll('[data-act="removeset"]').forEach(btn=>btn.addEventListener('click', ()=>{ removeLastSet(+btn.dataset.idx); markDirty(); }));
 }
 function addSetRow(idx){
@@ -1785,7 +1788,6 @@ function addSetRow(idx){
   const sugg = histSet?.w ?? lastTopSet(ex.name);
   const weightVal = histSet?.w ?? (sugg ?? '');
   const repsVal = histSet?.reps ?? fallbackSet?.reps ?? baseReps;
-  const pauseVal = histSet?.pause ?? '';
   const unit = ex.unit || 'kg';
   const wStep = unit === 'kg' ? '0.5' : '1';
   const row = document.createElement('div');
@@ -1794,7 +1796,7 @@ function addSetRow(idx){
     <div><input type="number" step="${wStep}" data-k="w" value="${weightVal ?? ''}"></div>
     <div><input type="text" class="suggestion" data-k="sugg" value="${sugg? (sugg+' '+unit): ''}" readonly></div>
     <div><input type="number" step="1" data-k="reps" value="${repsVal ?? ''}"></div>
-    <div><input type="number" step="15" data-k="pause" placeholder="90" value="${pauseVal ?? ''}"></div>`;
+    <div></div>`;
   card.appendChild(row);
 }
 function removeLastSet(idx){
@@ -1818,11 +1820,224 @@ function onLoadDay(){
     const unit = exObj?.unit || 'kg';
     row.sets?.forEach((s,si)=>{
       const g=card.querySelector(`.setgrid[data-idx='${idx}'][data-set='${si}']`); if(!g) return;
-      g.querySelector(`[data-k='w']`).value=s.w||''; g.querySelector(`[data-k='reps']`).value=s.reps||''; g.querySelector(`[data-k='pause']`).value=s.pause||'';
+      g.querySelector(`[data-k='w']`).value=s.w||''; g.querySelector(`[data-k='reps']`).value=s.reps||'';
       const histSet = history[si] ?? null;
       const sugg = histSet?.w ?? top;
       g.querySelector(`[data-k='sugg']`).value = sugg ? (sugg+' '+unit): '';
     });
+  });
+}
+
+// ===== FOCUS MODE =====
+let focusActive = false;
+let focusIdx = 0;
+let focusWorkoutId = null;
+let focusSessionData = null;   // {date, workout, rows:[{name, sets:[{w,reps}]}]}
+let focusSkipped = new Set();  // exercise indices skipped
+let focusTimerInterval = null;
+let focusStartTime = null;
+
+const focusModeEl    = () => document.getElementById('focusMode');
+const focusHeroEl    = () => document.getElementById('focusHero');
+const focusPreviewEl = () => document.getElementById('focusPreviews');
+const focusTimerEl   = () => document.getElementById('focusTimer');
+const focusProgressEl= () => document.getElementById('focusProgressText');
+
+function openFocusMode(){
+  saveDay();
+  focusWorkoutId = workoutSel.value;
+  focusIdx = 0;
+  focusSkipped = new Set();
+  focusStartTime = Date.now();
+
+  const exercises = getWorkoutExercises(focusWorkoutId);
+  const stored = getSession(storageKey()) || {};
+  focusSessionData = {
+    date: dateEl.value,
+    workout: focusWorkoutId,
+    rows: exercises.map((ex, i) => {
+      const storedRow = (stored.rows||[]).find(r => r.name === ex.name);
+      if(storedRow && storedRow.sets.length) return { name: ex.name, sets: storedRow.sets.map(s=>({w:s.w||0,reps:s.reps||0})) };
+      const hist = lastSetsFor(ex.name) || [];
+      const baseW = lastTopSet(ex.name) || 0;
+      return {
+        name: ex.name,
+        sets: Array.from({length: ex.sets||1}, (_, si) => ({
+          w: hist[si]?.w ?? baseW,
+          reps: hist[si]?.reps ?? (Array.isArray(ex.reps) ? (ex.reps[si] ?? ex.reps[ex.reps.length-1] ?? 0) : 0)
+        }))
+      };
+    })
+  };
+
+  focusActive = true;
+  document.body.classList.add('focus-on');
+  focusModeEl().classList.remove('hidden');
+
+  focusTimerInterval = setInterval(() => {
+    const mins = Math.floor((Date.now() - focusStartTime) / 60000);
+    const el = focusTimerEl(); if(el) el.textContent = mins + ' min';
+  }, 30000);
+  const el = focusTimerEl(); if(el) el.textContent = '0 min';
+
+  setupFocusEvents();
+  renderFocusMode();
+}
+
+function closeFocusMode(finished){
+  clearInterval(focusTimerInterval);
+  focusActive = false;
+  document.body.classList.remove('focus-on');
+  focusModeEl().classList.add('hidden');
+  if(focusSessionData){
+    setSessionRecord(storageKey(), focusSessionData);
+    renderTracker();
+    onLoadDay();
+  }
+  if(finished) toast('Training abgeschlossen 💪');
+}
+
+function collectFocusHero(){
+  const hero = focusHeroEl(); if(!hero) return;
+  const row = focusSessionData.rows[focusIdx]; if(!row) return;
+  hero.querySelectorAll('.focus-setrow').forEach((rowEl, si) => {
+    if(!row.sets[si]) return;
+    const w = rowEl.querySelector('[data-fk="w"]');
+    const r = rowEl.querySelector('[data-fk="reps"]');
+    row.sets[si].w   = w  ? (+w.value  || 0) : row.sets[si].w;
+    row.sets[si].reps= r  ? (+r.value  || 0) : row.sets[si].reps;
+  });
+}
+
+function renderFocusMode(){
+  const exercises = getWorkoutExercises(focusWorkoutId);
+  const total = exercises.length;
+  const prog = focusProgressEl(); if(prog) prog.textContent = `${focusIdx+1} / ${total}`;
+
+  renderFocusHero(exercises);
+  renderFocusPreviews(exercises);
+
+  const prevBtn = document.getElementById('focusPrevBtn');
+  const skipBtn = document.getElementById('focusSkipBtn');
+  const nextBtn = document.getElementById('focusNextBtn');
+  if(prevBtn) prevBtn.disabled = focusIdx === 0;
+  if(nextBtn) nextBtn.textContent = focusIdx >= total-1 ? 'Training abschliessen ✓' : 'Weiter ▶';
+}
+
+function renderFocusHero(exercises){
+  const hero = focusHeroEl(); if(!hero) return;
+  const ex = exercises[focusIdx]; if(!ex) return;
+  const row = focusSessionData.rows[focusIdx];
+  const unit = ex.unit || 'kg';
+  const wStep = unit === 'kg' ? '0.5' : '1';
+  const pr = getAllTimePR(ex.name);
+  const prW = pr ? pr.weight : 0;
+
+  const setsHtml = (row.sets||[]).map((s, si) => {
+    const isPR = unit === 'kg' && prW > 0 && (s.w||0) > prW;
+    return `<div class="focus-setrow">
+      <span class="focus-set-num">${si+1}</span>
+      <input type="number" step="${wStep}" data-fk="w" value="${s.w||''}" class="${isPR?'pr-input':''}" inputmode="decimal" />
+      <span class="focus-unit">${unit}</span>
+      <input type="number" step="1" data-fk="reps" value="${s.reps||''}" inputmode="numeric" />
+      <span class="focus-unit">Wdh.</span>
+    </div>`;
+  }).join('');
+
+  hero.innerHTML = `
+    <div class="focus-ex-name">${escapeHtml(ex.name||'')}</div>
+    ${ex.note ? `<div class="focus-ex-note">${escapeHtml(ex.note)}</div>` : ''}
+    ${focusSkipped.has(focusIdx) ? '<div class="focus-skipped-badge">Übersprungen</div>' : ''}
+    <div class="focus-sets-header">
+      <span>Satz</span><span>Gewicht</span><span></span><span>Wdh.</span><span></span>
+    </div>
+    ${setsHtml}
+    <div class="focus-setbtnrow">
+      <button class="btn ghost" id="focusAddSet">+ Satz</button>
+      <button class="btn ghost" id="focusRemSet">− Satz</button>
+    </div>`;
+
+  const addBtn = document.getElementById('focusAddSet');
+  const remBtn = document.getElementById('focusRemSet');
+  if(addBtn) addBtn.addEventListener('click', () => {
+    collectFocusHero();
+    const last = row.sets[row.sets.length-1] || {w:0,reps:0};
+    row.sets.push({w:last.w, reps:last.reps});
+    renderFocusHero(exercises);
+  });
+  if(remBtn) remBtn.addEventListener('click', () => {
+    if(row.sets.length <= 1) return;
+    collectFocusHero();
+    row.sets.pop();
+    renderFocusHero(exercises);
+  });
+}
+
+function renderFocusPreviews(exercises){
+  const container = focusPreviewEl(); if(!container) return;
+  const next = exercises.slice(focusIdx+1, focusIdx+3);
+  if(!next.length){ container.innerHTML = '<div class="focus-preview-empty">Letzte Übung</div>'; return; }
+  container.innerHTML = next.map((ex, i) => {
+    const absIdx = focusIdx + 1 + i;
+    const row = focusSessionData.rows[absIdx];
+    const topW = lastTopSet(ex.name);
+    const sets = ex.sets || 1;
+    const repsArr = Array.isArray(ex.reps) ? ex.reps : [];
+    const repsStr = repsArr.length ? `${sets}×${repsArr[0]}` : `${sets} Sätze`;
+    const skippedBadge = focusSkipped.has(absIdx) ? ' <span class="fp-skipped">↩</span>' : '';
+    return `<div class="focus-preview-card" data-fp-idx="${absIdx}">
+      <span class="fp-name">${escapeHtml(ex.name)}${skippedBadge}</span>
+      <span class="fp-meta">${repsStr}${topW ? ' · ' + topW + ' ' + (ex.unit||'kg') : ''}</span>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.focus-preview-card').forEach(card => {
+    card.addEventListener('click', () => {
+      collectFocusHero();
+      setSessionRecord(storageKey(), focusSessionData);
+      focusIdx = +card.dataset.fpIdx;
+      renderFocusMode();
+    });
+  });
+}
+
+function setupFocusEvents(){
+  const el = focusModeEl(); if(!el || el.dataset.focusBound) return;
+  el.dataset.focusBound = '1';
+
+  document.getElementById('focusClose').addEventListener('click', () => {
+    collectFocusHero();
+    closeFocusMode(false);
+  });
+  document.getElementById('focusNextBtn').addEventListener('click', () => {
+    collectFocusHero();
+    setSessionRecord(storageKey(), focusSessionData);
+    const exercises = getWorkoutExercises(focusWorkoutId);
+    if(focusIdx >= exercises.length - 1){
+      closeFocusMode(true);
+    } else {
+      focusIdx++;
+      renderFocusMode();
+    }
+  });
+  document.getElementById('focusPrevBtn').addEventListener('click', () => {
+    if(focusIdx === 0) return;
+    collectFocusHero();
+    focusIdx--;
+    renderFocusMode();
+  });
+  document.getElementById('focusSkipBtn').addEventListener('click', () => {
+    collectFocusHero();
+    focusSkipped.add(focusIdx);
+    const exercises = getWorkoutExercises(focusWorkoutId);
+    let next = focusIdx + 1;
+    while(next < exercises.length && focusSkipped.has(next)) next++;
+    if(next >= exercises.length){
+      closeFocusMode(true);
+    } else {
+      focusIdx = next;
+      renderFocusMode();
+    }
   });
 }
 
@@ -1975,8 +2190,7 @@ function normalizeDetailState(session){
       name: normalizeExerciseName(row?.name || ''),
       sets: (row?.sets||[]).map(set=>({
         w: +set?.w || 0,
-        reps: +set?.reps || 0,
-        pause: +set?.pause || 0
+        reps: +set?.reps || 0
       }))
     }))
   };
@@ -2019,7 +2233,6 @@ function renderActivityDetail(){
         <div>${si+1}</div>
         <input type="number" step="0.5" data-field="w" value="${set.w||''}" />
         <input type="number" step="1" data-field="reps" value="${set.reps||''}" />
-        <input type="number" step="15" data-field="pause" placeholder="90" value="${set.pause||''}" />
         <button class="btn ghost" data-detail="remove-set">−</button>
       </div>`;
     }).join('');
@@ -2085,7 +2298,6 @@ function onActivityDetailChange(evt){
   if(isNaN(setIdx) || !activeDetailState.rows[rowIdx].sets[setIdx]) return;
   if(field==='w'){ activeDetailState.rows[rowIdx].sets[setIdx].w = parseFloat(target.value)||0; }
   if(field==='reps'){ activeDetailState.rows[rowIdx].sets[setIdx].reps = parseInt(target.value,10)||0; }
-  if(field==='pause'){ activeDetailState.rows[rowIdx].sets[setIdx].pause = parseFloat(target.value)||0; }
 }
 
 function onActivityDetailClick(evt){
@@ -2096,7 +2308,7 @@ function onActivityDetailClick(evt){
   if(action==='cancel'){ closeActivityDetail(); return; }
   if(action==='save'){ saveActivityDetail(); return; }
   if(action==='add-row'){
-    activeDetailState.rows.push({ name:'', sets:[{w:0,reps:0,pause:0}] });
+    activeDetailState.rows.push({ name:'', sets:[{w:0,reps:0}] });
     renderActivityDetail();
     return;
   }
@@ -2110,7 +2322,7 @@ function onActivityDetailClick(evt){
     return;
   }
   if(action==='add-set'){
-    activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,pause:0});
+    activeDetailState.rows[rowIdx].sets.push({w:0,reps:0});
     renderActivityDetail();
     return;
   }
@@ -2121,7 +2333,7 @@ function onActivityDetailClick(evt){
     if(isNaN(setIdx)) return;
     activeDetailState.rows[rowIdx].sets.splice(setIdx,1);
     if(activeDetailState.rows[rowIdx].sets.length===0){
-      activeDetailState.rows[rowIdx].sets.push({w:0,reps:0,pause:0});
+      activeDetailState.rows[rowIdx].sets.push({w:0,reps:0});
     }
     renderActivityDetail();
   }
@@ -2133,7 +2345,7 @@ function saveActivityDetail(){
   const workoutId = getWorkout(activeDetailState.workout) ? activeDetailState.workout : (workoutsState.order[0]||'');
   const rows = (activeDetailState.rows||[]).map(row=>({
     name: normalizeExerciseName(row.name),
-    sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0 || (set.pause||0)!==0)
+    sets: (row.sets||[]).filter(set=> (set.w||0)!==0 || (set.reps||0)!==0)
   })).filter(row=>row.name && row.sets.length>0);
   if(!rows.length){ toast('Bitte erfasse mindestens einen Satz.'); return; }
   const payload={ date, workout: workoutId, rows };
@@ -2353,11 +2565,11 @@ function aggregateProgress(series){
 
 // Export CSV
 function onExportCSV(){
-  const rows=["Datum;Workout;Übung;Satz;Gewicht;Wdh.;Pause"];
+  const rows=["Datum;Workout;Übung;Satz;Gewicht;Wdh."];
   sessionEntries().sort((a,b)=>a.key.localeCompare(b.key)).forEach(({data})=>{
     (data.rows||[]).forEach(r=>{
       (r.sets||[]).forEach((s,si)=>{
-        rows.push([data.date,data.workout,r.name,si+1,s.w||'',s.reps||'',s.pause||''].join(';'));
+        rows.push([data.date,data.workout,r.name,si+1,s.w||'',s.reps||''].join(';'));
       });
     });
   });
@@ -2403,7 +2615,7 @@ function parseImportCSV(text){
   lines.forEach(line=>{
     const parts=line.split(';');
     if(parts.length<3) return;
-    const [date, workout, exercise, setIdx, weight, reps, pause]=parts.map(p=>p.trim());
+    const [date, workout, exercise, setIdx, weight, reps]=parts.map(p=>p.trim());
     if(!date || !workout || !exercise) return;
     const key=`hyrox:${workout}:${date}`;
     if(!sessionsMap.has(key)){
@@ -2417,8 +2629,7 @@ function parseImportCSV(text){
     const idx=Math.max(0,(parseInt(setIdx,10)||row.sets.length+1)-1);
     row.sets[idx]={
       w: parseNumber(weight),
-      reps: parseIntSafe(reps),
-      pause: parseNumber(pause)
+      reps: parseIntSafe(reps)
     };
   });
   return [...sessionsMap.values()].map(session=>({
@@ -2428,8 +2639,7 @@ function parseImportCSV(text){
       name: row.name,
       sets: row.sets.filter(Boolean).map(set=>({
         w: set?.w||0,
-        reps: set?.reps||0,
-        pause: set?.pause||0
+        reps: set?.reps||0
       }))
     }))
   })).filter(session=>session.rows.length>0);

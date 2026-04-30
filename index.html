@@ -44,6 +44,7 @@
       <div class="spacer"></div>
       <div class="btnrow">
         <button id="save" class="btn">Speichern</button>
+        <button id="focusStartBtn" class="btn focus-start-btn">▶ Fokus</button>
         <button id="export" class="btn ghost">Export CSV</button>
       </div>
       <button id="themeToggle" class="btn theme" title="Theme wechseln">🌙</button>
@@ -51,6 +52,27 @@
 
     <!-- TRAINING TAB (vertical scroll) -->
     <section id="tab-tracker" class="panel tracker-list"></section>
+
+    <!-- FOCUS MODE OVERLAY -->
+    <section id="focusMode" class="focus-overlay hidden" aria-modal="true">
+      <div class="focus-topbar">
+        <button id="focusClose" class="focus-close-btn" title="Übersicht">✕</button>
+        <div class="focus-progress">
+          <span id="focusProgressText"></span>
+        </div>
+        <div id="focusTimer" class="focus-timer">0 min</div>
+      </div>
+      <div class="focus-body">
+        <div id="focusHero" class="focus-hero"></div>
+        <div class="focus-next-label">Nächste Übungen</div>
+        <div id="focusPreviews" class="focus-previews"></div>
+      </div>
+      <div class="focus-footer">
+        <button id="focusPrevBtn" class="focus-nav-btn">◀ Zurück</button>
+        <button id="focusSkipBtn" class="focus-nav-btn focus-skip">Überspringen</button>
+        <button id="focusNextBtn" class="focus-nav-btn focus-next">Weiter ▶</button>
+      </div>
+    </section>
 
     <!-- OVERVIEW TAB -->
     <section id="tab-overview" class="panel hidden">
