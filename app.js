@@ -1828,34 +1828,47 @@ function onLoadDay(){
   });
 }
 
-// ===== FOCUS MODE =====
+// ===== FOCUS MODE v2 (set-by-set) =====
 let focusActive = false;
-let focusIdx = 0;
+let focusExIdx = 0;
+let focusSetIdx = 0;
 let focusWorkoutId = null;
-let focusSessionData = null;   // {date, workout, rows:[{name, sets:[{w,reps}]}]}
-let focusSkipped = new Set();  // exercise indices skipped
+let focusSessionData = null;
 let focusTimerInterval = null;
 let focusStartTime = null;
+let focusPauseInterval = null;
+let focusPauseStart = null;
 
-const focusModeEl    = () => document.getElementById('focusMode');
-const focusHeroEl    = () => document.getElementById('focusHero');
-const focusPreviewEl = () => document.getElementById('focusPreviews');
-const focusTimerEl   = () => document.getElementById('focusTimer');
-const focusProgressEl= () => document.getElementById('focusProgressText');
+const focusModeEl     = () => document.getElementById('focusMode');
+const focusTimerEl    = () => document.getElementById('focusTimer');
+const focusProgressEl = () => document.getElementById('focusProgressText');
+
+function getExerciseEmoji(name, unit){
+  const n = (name||'').toLowerCase();
+  if(unit === 'm') return '🏃';
+  if(/skierg|lauf|bike|ergometer/.test(n)) return '🏃';
+  if(/bein|squat|leg|knie|hip thrust|glute|goblet/.test(n)) return '🦵';
+  if(/bizep|curl|hammer|preacher/.test(n)) return '💪';
+  if(/trizep|dip/.test(n)) return '💪';
+  if(/core|bauch|crunch|plank|ab wheel|hanging|pallof/.test(n)) return '🔥';
+  if(/rücken|lat|rudern|row|face pull|reverse pec/.test(n)) return '🏋️';
+  if(/brust|chest|bank|pec deck/.test(n)) return '🤸';
+  if(/schulter|shoulder|delt|arnold|seitheben/.test(n)) return '🏋️';
+  return '🏋️';
+}
 
 function openFocusMode(){
   saveDay();
   focusWorkoutId = workoutSel.value;
-  focusIdx = 0;
-  focusSkipped = new Set();
-  focusStartTime = Date.now();
+  focusExIdx = 0;
+  focusSetIdx = 0;
 
   const exercises = getWorkoutExercises(focusWorkoutId);
   const stored = getSession(storageKey()) || {};
   focusSessionData = {
     date: dateEl.value,
     workout: focusWorkoutId,
-    rows: exercises.map((ex, i) => {
+    rows: exercises.map(ex => {
       const storedRow = (stored.rows||[]).find(r => r.name === ex.name);
       if(storedRow && storedRow.sets.length) return { name: ex.name, sets: storedRow.sets.map(s=>({w:s.w||0,reps:s.reps||0})) };
       const hist = lastSetsFor(ex.name) || [];
@@ -1873,19 +1886,13 @@ function openFocusMode(){
   focusActive = true;
   document.body.classList.add('focus-on');
   focusModeEl().classList.remove('hidden');
-
-  focusTimerInterval = setInterval(() => {
-    const mins = Math.floor((Date.now() - focusStartTime) / 60000);
-    const el = focusTimerEl(); if(el) el.textContent = mins + ' min';
-  }, 30000);
-  const el = focusTimerEl(); if(el) el.textContent = '0 min';
-
   setupFocusEvents();
-  renderFocusMode();
+  renderFocusPreFlight(exercises);
 }
 
 function closeFocusMode(finished){
   clearInterval(focusTimerInterval);
+  stopFocusPause();
   focusActive = false;
   document.body.classList.remove('focus-on');
   focusModeEl().classList.add('hidden');
@@ -1897,147 +1904,185 @@ function closeFocusMode(finished){
   if(finished) toast('Training abgeschlossen 💪');
 }
 
-function collectFocusHero(){
-  const hero = focusHeroEl(); if(!hero) return;
-  const row = focusSessionData.rows[focusIdx]; if(!row) return;
-  hero.querySelectorAll('.focus-setrow').forEach((rowEl, si) => {
-    if(!row.sets[si]) return;
-    const w = rowEl.querySelector('[data-fk="w"]');
-    const r = rowEl.querySelector('[data-fk="reps"]');
-    row.sets[si].w   = w  ? (+w.value  || 0) : row.sets[si].w;
-    row.sets[si].reps= r  ? (+r.value  || 0) : row.sets[si].reps;
-  });
-}
+function renderFocusPreFlight(exercises){
+  document.getElementById('focusPreFlight')?.classList.remove('hidden');
+  document.getElementById('focusSetView')?.classList.add('hidden');
+  document.getElementById('focusExNav')?.classList.add('hidden');
 
-function renderFocusMode(){
-  const exercises = getWorkoutExercises(focusWorkoutId);
-  const total = exercises.length;
-  const prog = focusProgressEl(); if(prog) prog.textContent = `${focusIdx+1} / ${total}`;
+  const prog = focusProgressEl(); if(prog) prog.textContent = '';
+  const timerEl = focusTimerEl(); if(timerEl) timerEl.textContent = '0 min';
 
-  renderFocusHero(exercises);
-  renderFocusPreviews(exercises);
+  const totalSets = exercises.reduce((s, ex) => s + (ex.sets||0), 0);
+  const exCnt = document.getElementById('focusPfExCount');
+  const setCnt = document.getElementById('focusPfSetCount');
+  if(exCnt) exCnt.textContent = exercises.length;
+  if(setCnt) setCnt.textContent = totalSets;
 
-  const prevBtn = document.getElementById('focusPrevBtn');
-  const skipBtn = document.getElementById('focusSkipBtn');
-  const nextBtn = document.getElementById('focusNextBtn');
-  if(prevBtn) prevBtn.disabled = focusIdx === 0;
-  if(nextBtn) nextBtn.textContent = focusIdx >= total-1 ? 'Training abschliessen ✓' : 'Weiter ▶';
-}
-
-function renderFocusHero(exercises){
-  const hero = focusHeroEl(); if(!hero) return;
-  const ex = exercises[focusIdx]; if(!ex) return;
-  const row = focusSessionData.rows[focusIdx];
-  const unit = ex.unit || 'kg';
-  const wStep = unit === 'kg' ? '0.5' : '1';
-  const pr = getAllTimePR(ex.name);
-  const prW = pr ? pr.weight : 0;
-
-  const setsHtml = (row.sets||[]).map((s, si) => {
-    const isPR = unit === 'kg' && prW > 0 && (s.w||0) > prW;
-    return `<div class="focus-setrow">
-      <span class="focus-set-num">${si+1}</span>
-      <input type="number" step="${wStep}" data-fk="w" value="${s.w||''}" class="${isPR?'pr-input':''}" inputmode="decimal" />
-      <span class="focus-unit">${unit}</span>
-      <input type="number" step="1" data-fk="reps" value="${s.reps||''}" inputmode="numeric" />
-      <span class="focus-unit">Wdh.</span>
-    </div>`;
-  }).join('');
-
-  hero.innerHTML = `
-    <div class="focus-ex-name">${escapeHtml(ex.name||'')}</div>
-    ${ex.note ? `<div class="focus-ex-note">${escapeHtml(ex.note)}</div>` : ''}
-    ${focusSkipped.has(focusIdx) ? '<div class="focus-skipped-badge">Übersprungen</div>' : ''}
-    <div class="focus-sets-header">
-      <span>Satz</span><span>Gewicht</span><span></span><span>Wdh.</span><span></span>
-    </div>
-    ${setsHtml}
-    <div class="focus-setbtnrow">
-      <button class="btn ghost" id="focusAddSet">+ Satz</button>
-      <button class="btn ghost" id="focusRemSet">− Satz</button>
-    </div>`;
-
-  const addBtn = document.getElementById('focusAddSet');
-  const remBtn = document.getElementById('focusRemSet');
-  if(addBtn) addBtn.addEventListener('click', () => {
-    collectFocusHero();
-    const last = row.sets[row.sets.length-1] || {w:0,reps:0};
-    row.sets.push({w:last.w, reps:last.reps});
-    renderFocusHero(exercises);
-  });
-  if(remBtn) remBtn.addEventListener('click', () => {
-    if(row.sets.length <= 1) return;
-    collectFocusHero();
-    row.sets.pop();
-    renderFocusHero(exercises);
-  });
-}
-
-function renderFocusPreviews(exercises){
-  const container = focusPreviewEl(); if(!container) return;
-  const next = exercises.slice(focusIdx+1, focusIdx+3);
-  if(!next.length){ container.innerHTML = '<div class="focus-preview-empty">Letzte Übung</div>'; return; }
-  container.innerHTML = next.map((ex, i) => {
-    const absIdx = focusIdx + 1 + i;
-    const row = focusSessionData.rows[absIdx];
-    const topW = lastTopSet(ex.name);
-    const sets = ex.sets || 1;
+  const list = document.getElementById('focusPfList');
+  if(list) list.innerHTML = exercises.map(ex => {
     const repsArr = Array.isArray(ex.reps) ? ex.reps : [];
-    const repsStr = repsArr.length ? `${sets}×${repsArr[0]}` : `${sets} Sätze`;
-    const skippedBadge = focusSkipped.has(absIdx) ? ' <span class="fp-skipped">↩</span>' : '';
-    return `<div class="focus-preview-card" data-fp-idx="${absIdx}">
-      <span class="fp-name">${escapeHtml(ex.name)}${skippedBadge}</span>
-      <span class="fp-meta">${repsStr}${topW ? ' · ' + topW + ' ' + (ex.unit||'kg') : ''}</span>
+    const repsStr = repsArr.length ? `${ex.sets||1} × ${repsArr[0]} Wdh` : `${ex.sets||1} Sätze`;
+    return `<div class="focus-pf-item">
+      <span class="focus-pf-emoji">${getExerciseEmoji(ex.name, ex.unit)}</span>
+      <div class="focus-pf-info">
+        <div class="focus-pf-name">${escapeHtml(ex.name)}</div>
+        ${ex.note ? `<div class="focus-pf-note">${escapeHtml(ex.note)}</div>` : ''}
+      </div>
+      <span class="focus-pf-meta">${repsStr}</span>
     </div>`;
   }).join('');
+}
 
-  container.querySelectorAll('.focus-preview-card').forEach(card => {
-    card.addEventListener('click', () => {
-      collectFocusHero();
-      setSessionRecord(storageKey(), focusSessionData);
-      focusIdx = +card.dataset.fpIdx;
-      renderFocusMode();
+function startFocusSession(){
+  document.getElementById('focusPreFlight')?.classList.add('hidden');
+  document.getElementById('focusSetView')?.classList.remove('hidden');
+  document.getElementById('focusExNav')?.classList.remove('hidden');
+
+  focusStartTime = Date.now();
+  const timerEl = focusTimerEl(); if(timerEl) timerEl.textContent = '0 min';
+  focusTimerInterval = setInterval(() => {
+    const mins = Math.floor((Date.now() - focusStartTime) / 60000);
+    const el = focusTimerEl(); if(el) el.textContent = mins + ' min';
+  }, 30000);
+
+  renderFocusSetView();
+}
+
+function renderFocusSetView(){
+  const exercises = getWorkoutExercises(focusWorkoutId);
+  const ex = exercises[focusExIdx];
+  if(!ex){ closeFocusMode(true); return; }
+
+  const row = focusSessionData.rows[focusExIdx];
+  const totalSets = row?.sets.length || ex.sets || 1;
+  const unit = ex.unit || 'kg';
+
+  const prog = focusProgressEl();
+  if(prog) prog.textContent = `Übung ${focusExIdx+1}/${exercises.length}`;
+
+  document.getElementById('focusExEmoji').textContent = getExerciseEmoji(ex.name, unit);
+  document.getElementById('focusExName').textContent = ex.name || '';
+  const noteEl = document.getElementById('focusExNote');
+  if(noteEl){ noteEl.textContent = ex.note || ''; noteEl.style.display = ex.note ? '' : 'none'; }
+
+  document.getElementById('focusSetProgress').textContent = `${focusSetIdx+1}/${totalSets}`;
+  const targetReps = Array.isArray(ex.reps) ? (ex.reps[focusSetIdx] ?? ex.reps[ex.reps.length-1] ?? 0) : 0;
+  document.getElementById('focusTargetReps').textContent = targetReps || '–';
+
+  const hist = lastSetsFor(ex.name) || [];
+  const lastW = hist[focusSetIdx]?.w;
+  document.getElementById('focusLastWeight').textContent = lastW != null ? `${lastW} ${unit}` : '–';
+
+  const currInput = document.getElementById('focusCurrWeight');
+  if(currInput){
+    const set = row?.sets[focusSetIdx];
+    currInput.value = set?.w != null && set.w !== 0 ? set.w : '';
+    currInput.step = unit === 'kg' ? '0.5' : '1';
+  }
+  document.getElementById('focusCurrUnit').textContent = unit;
+
+  stopFocusPause();
+  document.getElementById('focusPauseCard')?.classList.add('hidden');
+  renderFocusHistoryChips(ex.name, unit);
+
+  const prevBtn = document.getElementById('focusPrevExBtn');
+  const skipBtn = document.getElementById('focusSkipExBtn');
+  if(prevBtn) prevBtn.disabled = focusExIdx === 0 && focusSetIdx === 0;
+  if(skipBtn) skipBtn.disabled = focusExIdx >= exercises.length - 1;
+}
+
+function renderFocusHistoryChips(exName, unit){
+  const container = document.getElementById('focusHistoryChips');
+  if(!container) return;
+  const hist = lastSetsFor(exName) || [];
+  if(!hist.length){ container.innerHTML = '<span class="focus-no-history">Noch kein Verlauf</span>'; return; }
+  container.innerHTML = hist.slice(0, 6).map((s, i) => `<div class="focus-history-chip${i === focusSetIdx ? ' active-chip' : ''}">
+    <div class="focus-chip-label">Satz ${i+1}</div>
+    <div class="focus-chip-value">${s.w != null ? s.w + ' ' + unit : '–'}</div>
+  </div>`).join('');
+}
+
+function completeFocusSet(){
+  const currInput = document.getElementById('focusCurrWeight');
+  const w = currInput ? (+currInput.value || 0) : 0;
+  const row = focusSessionData.rows[focusExIdx];
+  if(row?.sets[focusSetIdx]) row.sets[focusSetIdx].w = w;
+  setSessionRecord(storageKey(), focusSessionData);
+
+  const exercises = getWorkoutExercises(focusWorkoutId);
+  const totalSets = row?.sets.length || 1;
+
+  if(focusSetIdx >= totalSets - 1){
+    focusExIdx++;
+    focusSetIdx = 0;
+    if(focusExIdx >= exercises.length){ closeFocusMode(true); return; }
+    renderFocusSetView();
+  } else {
+    focusSetIdx++;
+    const ex = exercises[focusExIdx];
+    const unit = ex?.unit || 'kg';
+    const totalSets2 = row?.sets.length || 1;
+
+    document.getElementById('focusSetProgress').textContent = `${focusSetIdx+1}/${totalSets2}`;
+
+    const hist = lastSetsFor(ex?.name) || [];
+    const lastW = hist[focusSetIdx]?.w;
+    document.getElementById('focusLastWeight').textContent = lastW != null ? `${lastW} ${unit}` : '–';
+
+    const set2 = row?.sets[focusSetIdx];
+    const inp = document.getElementById('focusCurrWeight');
+    if(inp) inp.value = set2?.w != null && set2.w !== 0 ? set2.w : '';
+
+    const targetReps = Array.isArray(ex?.reps) ? (ex.reps[focusSetIdx] ?? ex.reps[ex.reps.length-1] ?? 0) : 0;
+    document.getElementById('focusTargetReps').textContent = targetReps || '–';
+
+    document.getElementById('focusHistoryChips')?.querySelectorAll('.focus-history-chip').forEach((chip, i) => {
+      chip.classList.toggle('active-chip', i === focusSetIdx);
     });
-  });
+    startFocusPause();
+  }
+}
+
+function startFocusPause(){
+  stopFocusPause();
+  document.getElementById('focusPauseCard')?.classList.remove('hidden');
+  focusPauseStart = Date.now();
+  const secEl = document.getElementById('focusPauseSec');
+  if(secEl) secEl.textContent = '0s';
+  focusPauseInterval = setInterval(() => {
+    const secs = Math.floor((Date.now() - focusPauseStart) / 1000);
+    const el = document.getElementById('focusPauseSec');
+    if(el) el.textContent = secs + 's';
+  }, 1000);
+}
+
+function stopFocusPause(){
+  if(focusPauseInterval){ clearInterval(focusPauseInterval); focusPauseInterval = null; }
+  focusPauseStart = null;
 }
 
 function setupFocusEvents(){
   const el = focusModeEl(); if(!el || el.dataset.focusBound) return;
   el.dataset.focusBound = '1';
 
-  document.getElementById('focusClose').addEventListener('click', () => {
-    collectFocusHero();
-    closeFocusMode(false);
+  document.getElementById('focusClose').addEventListener('click', () => closeFocusMode(false));
+  document.getElementById('focusPfStart').addEventListener('click', startFocusSession);
+  document.getElementById('focusCompleteSet').addEventListener('click', completeFocusSet);
+
+  document.getElementById('focusPrevExBtn').addEventListener('click', () => {
+    stopFocusPause();
+    document.getElementById('focusPauseCard')?.classList.add('hidden');
+    if(focusSetIdx > 0){ focusSetIdx = 0; renderFocusSetView(); return; }
+    if(focusExIdx > 0){ focusExIdx--; focusSetIdx = 0; renderFocusSetView(); }
   });
-  document.getElementById('focusNextBtn').addEventListener('click', () => {
-    collectFocusHero();
-    setSessionRecord(storageKey(), focusSessionData);
+
+  document.getElementById('focusSkipExBtn').addEventListener('click', () => {
+    stopFocusPause();
     const exercises = getWorkoutExercises(focusWorkoutId);
-    if(focusIdx >= exercises.length - 1){
-      closeFocusMode(true);
-    } else {
-      focusIdx++;
-      renderFocusMode();
-    }
-  });
-  document.getElementById('focusPrevBtn').addEventListener('click', () => {
-    if(focusIdx === 0) return;
-    collectFocusHero();
-    focusIdx--;
-    renderFocusMode();
-  });
-  document.getElementById('focusSkipBtn').addEventListener('click', () => {
-    collectFocusHero();
-    focusSkipped.add(focusIdx);
-    const exercises = getWorkoutExercises(focusWorkoutId);
-    let next = focusIdx + 1;
-    while(next < exercises.length && focusSkipped.has(next)) next++;
-    if(next >= exercises.length){
-      closeFocusMode(true);
-    } else {
-      focusIdx = next;
-      renderFocusMode();
-    }
+    focusExIdx++;
+    focusSetIdx = 0;
+    if(focusExIdx >= exercises.length) closeFocusMode(true);
+    else renderFocusSetView();
   });
 }
 
