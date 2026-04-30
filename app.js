@@ -836,8 +836,7 @@ function onWorkoutManagerClick(evt){
   evt.preventDefault();
   if(action==='add-exercise'){
     openWorkoutIds.add(workoutId);
-    workout.exercises.push({ name:'', sets:3, reps:[], technique:'', note:'' });
-    saveWorkoutsState();
+    openLibraryPicker(workoutId);
     return;
   }
   if(action==='delete-workout'){
@@ -876,6 +875,86 @@ function onWorkoutManagerClick(evt){
     workout.exercises[idx] = workout.exercises[swapIdx];
     workout.exercises[swapIdx] = tmp;
     saveWorkoutsState();
+  }
+}
+
+// ===== LIBRARY PICKER =====
+let _libPickerWorkoutId = null;
+let _libPickerExName = null;
+
+function openLibraryPicker(workoutId){
+  _libPickerWorkoutId = workoutId;
+  const modal = document.getElementById('libraryPicker');
+  if(!modal) return;
+  modal.classList.remove('hidden');
+  renderLibraryGrid('');
+  const search = document.getElementById('libPickerSearch');
+  if(search){ search.value = ''; search.focus(); }
+  if(!modal.dataset.bound){
+    modal.dataset.bound = '1';
+    document.getElementById('libPickerClose').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', e => { if(e.target === modal) modal.classList.add('hidden'); });
+    document.getElementById('libPickerSearch').addEventListener('input', e => renderLibraryGrid(e.target.value));
+  }
+}
+
+function renderLibraryGrid(query){
+  const grid = document.getElementById('libPickerGrid');
+  if(!grid) return;
+  const q = (query||'').toLowerCase();
+  const names = EXERCISE_LIBRARY.filter(n => !q || n.toLowerCase().includes(q));
+  if(!names.length){ grid.innerHTML = '<div class="lib-empty">Keine Übungen gefunden</div>'; return; }
+  grid.innerHTML = names.map(name => {
+    const muscle = MUSCLE_GROUP_MAP[name] || '';
+    return `<div class="lib-card" data-name="${escapeHtml(name)}">
+      <div class="lib-card-top">
+        <span class="lib-card-emoji">${getExerciseEmoji(name, '')}</span>
+        <span class="lib-card-muscle">${escapeHtml(muscle)}</span>
+      </div>
+      <div class="lib-card-name">${escapeHtml(name)}</div>
+      <button class="lib-add-btn" data-name="${escapeHtml(name)}">+ Hinzufügen</button>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.lib-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _libPickerExName = btn.dataset.name;
+      document.getElementById('libraryPicker').classList.add('hidden');
+      openLibAddConfig(_libPickerExName);
+    });
+  });
+}
+
+function openLibAddConfig(name){
+  const modal = document.getElementById('libAddConfig');
+  if(!modal) return;
+  document.getElementById('libConfigTitle').textContent = name;
+  const lastW = lastTopSet(name) || '';
+  const weightInput = document.getElementById('libConfigWeight');
+  if(weightInput) weightInput.value = lastW;
+  modal.classList.remove('hidden');
+  if(!modal.dataset.bound){
+    modal.dataset.bound = '1';
+    document.getElementById('libConfigClose').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', e => { if(e.target === modal) modal.classList.add('hidden'); });
+    document.getElementById('libConfigConfirm').addEventListener('click', () => {
+      const sets = Math.max(1, +document.getElementById('libConfigSets').value || 3);
+      const reps = Math.max(1, +document.getElementById('libConfigReps').value || 10);
+      const weight = +document.getElementById('libConfigWeight').value || 0;
+      const workout = getWorkout(_libPickerWorkoutId);
+      if(workout){
+        workout.exercises.push({
+          name: _libPickerExName||'',
+          sets,
+          reps: Array.from({length: sets}, () => reps),
+          technique: '',
+          note: '',
+          ...(weight ? { startWeight: weight } : {})
+        });
+        saveWorkoutsState();
+      }
+      modal.classList.add('hidden');
+      _libPickerExName = null;
+    });
   }
 }
 
@@ -1650,7 +1729,7 @@ function renderTracker(){
           <div class="pill">${idx+1}. ${escapeHtml(ex.name||'')}</div>
           ${plateauBadge}
         </div>
-        ${ex.note ? `<input type="text" class="exercise-note-input" data-note-idx="${idx}" value="${escapeHtml(ex.note)}" placeholder="Notiz..." />` : ''}
+        <input type="text" class="exercise-note-input" data-note-idx="${idx}" value="${escapeHtml(ex.note||'')}" placeholder="Maschine / Notiz…" />
         <div class="exercise-meta">
           <span class="orm-display" id="orm-${idx}"></span>
         </div>
@@ -1828,7 +1907,8 @@ function onLoadDay(){
   });
 }
 
-// ===== FOCUS MODE v2 (set-by-set) =====
+// ===== FOCUS MODE v3 (alle Sätze sichtbar, Countdown-Pause) =====
+const FOCUS_PAUSE_SECS = 90;
 let focusActive = false;
 let focusExIdx = 0;
 let focusSetIdx = 0;
@@ -1954,8 +2034,8 @@ function renderFocusSetView(){
   if(!ex){ closeFocusMode(true); return; }
 
   const row = focusSessionData.rows[focusExIdx];
-  const totalSets = row?.sets.length || ex.sets || 1;
   const unit = ex.unit || 'kg';
+  const hist = lastSetsFor(ex.name) || [];
 
   const prog = focusProgressEl();
   if(prog) prog.textContent = `Übung ${focusExIdx+1}/${exercises.length}`;
@@ -1965,25 +2045,10 @@ function renderFocusSetView(){
   const noteEl = document.getElementById('focusExNote');
   if(noteEl){ noteEl.textContent = ex.note || ''; noteEl.style.display = ex.note ? '' : 'none'; }
 
-  document.getElementById('focusSetProgress').textContent = `${focusSetIdx+1}/${totalSets}`;
-  const targetReps = Array.isArray(ex.reps) ? (ex.reps[focusSetIdx] ?? ex.reps[ex.reps.length-1] ?? 0) : 0;
-  document.getElementById('focusTargetReps').textContent = targetReps || '–';
-
-  const hist = lastSetsFor(ex.name) || [];
-  const lastW = hist[focusSetIdx]?.w;
-  document.getElementById('focusLastWeight').textContent = lastW != null ? `${lastW} ${unit}` : '–';
-
-  const currInput = document.getElementById('focusCurrWeight');
-  if(currInput){
-    const set = row?.sets[focusSetIdx];
-    currInput.value = set?.w != null && set.w !== 0 ? set.w : '';
-    currInput.step = unit === 'kg' ? '0.5' : '1';
-  }
-  document.getElementById('focusCurrUnit').textContent = unit;
-
+  renderFocusAllSets(ex, row, unit, hist);
   stopFocusPause();
-  document.getElementById('focusPauseCard')?.classList.add('hidden');
-  renderFocusHistoryChips(ex.name, unit);
+  renderFocusActionComplete();
+  renderFocusUpcoming(exercises);
 
   const prevBtn = document.getElementById('focusPrevExBtn');
   const skipBtn = document.getElementById('focusSkipExBtn');
@@ -1991,15 +2056,92 @@ function renderFocusSetView(){
   if(skipBtn) skipBtn.disabled = focusExIdx >= exercises.length - 1;
 }
 
-function renderFocusHistoryChips(exName, unit){
-  const container = document.getElementById('focusHistoryChips');
+function renderFocusAllSets(ex, row, unit, hist){
+  const container = document.getElementById('focusSetsContainer');
   if(!container) return;
-  const hist = lastSetsFor(exName) || [];
-  if(!hist.length){ container.innerHTML = '<span class="focus-no-history">Noch kein Verlauf</span>'; return; }
-  container.innerHTML = hist.slice(0, 6).map((s, i) => `<div class="focus-history-chip${i === focusSetIdx ? ' active-chip' : ''}">
-    <div class="focus-chip-label">Satz ${i+1}</div>
-    <div class="focus-chip-value">${s.w != null ? s.w + ' ' + unit : '–'}</div>
-  </div>`).join('');
+  const wStep = unit === 'kg' ? '0.5' : '1';
+  container.innerHTML = (row?.sets||[]).map((s, si) => {
+    const reps = Array.isArray(ex.reps) ? (ex.reps[si] ?? ex.reps[ex.reps.length-1] ?? 0) : 0;
+    const histW = hist[si]?.w;
+    if(si < focusSetIdx){
+      return `<div class="fsr fsr-done">
+        <div class="fsr-num done">✓</div>
+        <div class="fsr-body">
+          <span class="fsr-label">Satz ${si+1}</span>
+          <span class="fsr-reps">${reps} Wdh.</span>
+        </div>
+        <div class="fsr-weight">${s.w||'–'} <span class="fsr-unit">${unit}</span></div>
+      </div>`;
+    } else if(si === focusSetIdx){
+      return `<div class="fsr fsr-active">
+        <div class="fsr-num active">${si+1}</div>
+        <div class="fsr-body">
+          <span class="fsr-label">Satz ${si+1}</span>
+          <span class="fsr-reps">${reps} Wdh.${histW != null ? ` · Letztes Mal: ${histW} ${unit}` : ''}</span>
+        </div>
+        <div class="fsr-weight-input">
+          <input id="focusCurrWeight" type="number" step="${wStep}" inputmode="decimal" placeholder="0" value="${s.w != null && s.w !== 0 ? s.w : ''}" />
+          <span class="fsr-unit">${unit}</span>
+        </div>
+      </div>`;
+    } else {
+      return `<div class="fsr fsr-pending">
+        <div class="fsr-num pending">${si+1}</div>
+        <div class="fsr-body">
+          <span class="fsr-label">Satz ${si+1}</span>
+          <span class="fsr-reps">${reps} Wdh.</span>
+        </div>
+        <div class="fsr-weight">${histW != null ? histW + ' ' + unit : '–'} <span class="fsr-unit"></span></div>
+      </div>`;
+    }
+  }).join('');
+}
+
+function renderFocusActionComplete(){
+  const area = document.getElementById('focusActionArea');
+  if(!area) return;
+  area.innerHTML = `<button class="focus-cta-btn focus-complete-btn">Satz abschließen ›</button>`;
+  area.querySelector('.focus-complete-btn').addEventListener('click', completeFocusSet);
+}
+
+function renderFocusActionPause(remaining){
+  const area = document.getElementById('focusActionArea');
+  if(!area) return;
+  area.innerHTML = `
+    <div class="focus-pause-inline">
+      <span class="focus-pause-icon">⏱</span>
+      <span class="focus-pause-label">Pause</span>
+      <span class="focus-pause-sec" id="focusPauseSec">${remaining}s</span>
+    </div>
+    <button class="focus-cta-btn focus-skip-pause-btn">Nächster Satz ›</button>`;
+  area.querySelector('.focus-skip-pause-btn').addEventListener('click', () => {
+    stopFocusPause();
+    renderFocusActionComplete();
+  });
+}
+
+function renderFocusUpcoming(exercises){
+  const container = document.getElementById('focusUpcoming');
+  const label = document.getElementById('focusUpcomingLabel');
+  if(!container) return;
+  const remaining = exercises.slice(focusExIdx + 1);
+  if(!remaining.length){
+    if(label) label.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  if(label) label.style.display = '';
+  container.innerHTML = remaining.map(ex => {
+    const repsArr = Array.isArray(ex.reps) ? ex.reps : [];
+    const repsStr = repsArr.length ? `${ex.sets||1} × ${repsArr[0]}` : `${ex.sets||1} Sätze`;
+    return `<div class="focus-upcoming-item">
+      <span class="focus-upcoming-emoji">${getExerciseEmoji(ex.name, ex.unit)}</span>
+      <div class="focus-upcoming-info">
+        <span class="focus-upcoming-name">${escapeHtml(ex.name)}</span>
+        <span class="focus-upcoming-meta">${repsStr}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function completeFocusSet(){
@@ -2021,38 +2163,27 @@ function completeFocusSet(){
     focusSetIdx++;
     const ex = exercises[focusExIdx];
     const unit = ex?.unit || 'kg';
-    const totalSets2 = row?.sets.length || 1;
-
-    document.getElementById('focusSetProgress').textContent = `${focusSetIdx+1}/${totalSets2}`;
-
     const hist = lastSetsFor(ex?.name) || [];
-    const lastW = hist[focusSetIdx]?.w;
-    document.getElementById('focusLastWeight').textContent = lastW != null ? `${lastW} ${unit}` : '–';
-
-    const set2 = row?.sets[focusSetIdx];
-    const inp = document.getElementById('focusCurrWeight');
-    if(inp) inp.value = set2?.w != null && set2.w !== 0 ? set2.w : '';
-
-    const targetReps = Array.isArray(ex?.reps) ? (ex.reps[focusSetIdx] ?? ex.reps[ex.reps.length-1] ?? 0) : 0;
-    document.getElementById('focusTargetReps').textContent = targetReps || '–';
-
-    document.getElementById('focusHistoryChips')?.querySelectorAll('.focus-history-chip').forEach((chip, i) => {
-      chip.classList.toggle('active-chip', i === focusSetIdx);
-    });
+    renderFocusAllSets(ex, row, unit, hist);
     startFocusPause();
   }
 }
 
 function startFocusPause(){
   stopFocusPause();
-  document.getElementById('focusPauseCard')?.classList.remove('hidden');
+  let remaining = FOCUS_PAUSE_SECS;
+  renderFocusActionPause(remaining);
+  if(navigator.vibrate) navigator.vibrate(100);
   focusPauseStart = Date.now();
-  const secEl = document.getElementById('focusPauseSec');
-  if(secEl) secEl.textContent = '0s';
   focusPauseInterval = setInterval(() => {
-    const secs = Math.floor((Date.now() - focusPauseStart) / 1000);
+    remaining = Math.max(0, FOCUS_PAUSE_SECS - Math.floor((Date.now() - focusPauseStart) / 1000));
     const el = document.getElementById('focusPauseSec');
-    if(el) el.textContent = secs + 's';
+    if(el) el.textContent = remaining + 's';
+    if(remaining <= 0){
+      stopFocusPause();
+      if(navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      renderFocusActionComplete();
+    }
   }, 1000);
 }
 
@@ -2067,11 +2198,9 @@ function setupFocusEvents(){
 
   document.getElementById('focusClose').addEventListener('click', () => closeFocusMode(false));
   document.getElementById('focusPfStart').addEventListener('click', startFocusSession);
-  document.getElementById('focusCompleteSet').addEventListener('click', completeFocusSet);
 
   document.getElementById('focusPrevExBtn').addEventListener('click', () => {
     stopFocusPause();
-    document.getElementById('focusPauseCard')?.classList.add('hidden');
     if(focusSetIdx > 0){ focusSetIdx = 0; renderFocusSetView(); return; }
     if(focusExIdx > 0){ focusExIdx--; focusSetIdx = 0; renderFocusSetView(); }
   });

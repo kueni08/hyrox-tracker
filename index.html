@@ -79,47 +79,21 @@
         </div>
       </div>
 
-      <!-- Set view: one set at a time -->
+      <!-- Set view: all sets visible, current highlighted -->
       <div id="focusSetView" class="focus-section hidden">
         <div class="focus-ex-header">
           <div class="focus-ex-emoji" id="focusExEmoji">🏋️</div>
           <div class="focus-ex-name" id="focusExName"></div>
           <div class="focus-ex-note" id="focusExNote"></div>
         </div>
-        <div class="focus-set-card">
-          <div class="focus-set-stats">
-            <div>
-              <div class="focus-stat-label">Aktueller Satz</div>
-              <div class="focus-stat-value" id="focusSetProgress">1/1</div>
-            </div>
-            <div class="focus-set-stats-right">
-              <div class="focus-stat-label">Wiederholungen</div>
-              <div class="focus-stat-value focus-stat-white" id="focusTargetReps">–</div>
-            </div>
-          </div>
-          <div class="focus-weight-row">
-            <div class="focus-last-weight-card">
-              <div class="focus-wcard-label">Letztes Mal</div>
-              <div class="focus-wcard-value" id="focusLastWeight">–</div>
-            </div>
-            <div class="focus-curr-weight-card">
-              <div class="focus-wcard-label">Aktuelles Gewicht</div>
-              <div class="focus-wcard-input-row">
-                <input id="focusCurrWeight" type="number" step="0.5" inputmode="decimal" placeholder="0" />
-                <span id="focusCurrUnit" class="focus-curr-unit">kg</span>
-              </div>
-            </div>
-          </div>
-          <button id="focusCompleteSet" class="focus-cta-btn">Satz abschließen ›</button>
-        </div>
-        <div id="focusPauseCard" class="focus-pause-card hidden">
-          <div class="focus-pause-icon">⏱</div>
-          <div class="focus-pause-label">Pause</div>
-          <div class="focus-pause-sec" id="focusPauseSec">0s</div>
-        </div>
-        <div class="focus-history">
-          <div class="focus-history-label">Gewichte vom letzten Training</div>
-          <div class="focus-history-chips" id="focusHistoryChips"></div>
+        <!-- All sets rendered dynamically here -->
+        <div id="focusSetsContainer" class="focus-sets-container"></div>
+        <!-- Action: "Satz abschließen" or countdown pause -->
+        <div id="focusActionArea" class="focus-action-area"></div>
+        <!-- All remaining exercises -->
+        <div class="focus-upcoming-section">
+          <div class="focus-history-label" id="focusUpcomingLabel">Nächste Übungen</div>
+          <div id="focusUpcoming" class="focus-upcoming-list"></div>
         </div>
       </div>
 
@@ -287,6 +261,43 @@
     <div class="modal-content">
       <button class="modal-close" data-close="activityDetail" aria-label="Detail schließen">×</button>
       <div id="activityDetailBody"></div>
+    </div>
+  </div>
+
+  <!-- LIBRARY PICKER MODAL -->
+  <div id="libraryPicker" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="libPickerTitle">
+    <div class="modal-content lib-picker-content">
+      <div class="lib-picker-header">
+        <h3 id="libPickerTitle">Übung hinzufügen</h3>
+        <button class="modal-close" id="libPickerClose" aria-label="Schließen">×</button>
+      </div>
+      <input id="libPickerSearch" class="lib-picker-search" type="search" placeholder="Übung suchen…" />
+      <div id="libPickerGrid" class="lib-picker-grid"></div>
+    </div>
+  </div>
+
+  <!-- ADD EXERCISE CONFIG MODAL -->
+  <div id="libAddConfig" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content lib-config-content">
+      <div class="lib-picker-header">
+        <h3 id="libConfigTitle">Übung konfigurieren</h3>
+        <button class="modal-close" id="libConfigClose" aria-label="Schließen">×</button>
+      </div>
+      <div class="lib-config-body">
+        <div class="lib-config-row">
+          <label>Sätze</label>
+          <input id="libConfigSets" type="number" min="1" max="20" value="3" />
+        </div>
+        <div class="lib-config-row">
+          <label>Wdh. pro Satz</label>
+          <input id="libConfigReps" type="number" min="1" max="100" value="10" />
+        </div>
+        <div class="lib-config-row">
+          <label>Startgewicht (kg)</label>
+          <input id="libConfigWeight" type="number" min="0" step="0.5" value="" placeholder="optional" />
+        </div>
+        <button id="libConfigConfirm" class="btn primary" style="width:100%;margin-top:8px">Hinzufügen</button>
+      </div>
     </div>
   </div>
 </body>
