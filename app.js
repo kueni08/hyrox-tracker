@@ -2009,6 +2009,7 @@ let focusTimerInterval = null;
 let focusStartTime = null;
 let focusPauseInterval = null;
 let focusPauseStart = null;
+let focusTechOpen = false;
 
 const focusModeEl     = () => document.getElementById('focusMode');
 const focusTimerEl    = () => document.getElementById('focusTimer');
@@ -2061,9 +2062,46 @@ function openFocusMode(){
   renderFocusPreFlight(exercises);
 }
 
+function updateTechDrawer(ex){
+  const url = ex?.technique || '';
+  const techBtn = document.getElementById('focusTechBtn');
+  if(techBtn) techBtn.classList.toggle('hidden', !url);
+
+  if(url){
+    const labelEl = document.getElementById('techBarLabel');
+    if(labelEl) labelEl.textContent = ex.name || 'Technik';
+    const link = document.getElementById('techOpenLink');
+    if(link) link.href = url;
+    if(focusTechOpen){
+      const iframe = document.getElementById('techIframe');
+      if(iframe && iframe.getAttribute('src') !== url) iframe.src = url;
+    }
+  } else {
+    if(focusTechOpen) closeTechDrawer();
+  }
+}
+
+function openTechDrawer(){
+  const ex = getWorkoutExercises(focusWorkoutId)[focusExIdx];
+  const url = ex?.technique || '';
+  if(!url) return;
+  focusTechOpen = true;
+  const iframe = document.getElementById('techIframe');
+  if(iframe) iframe.src = url;
+  document.getElementById('techDrawer')?.classList.add('open');
+}
+
+function closeTechDrawer(){
+  focusTechOpen = false;
+  document.getElementById('techDrawer')?.classList.remove('open');
+  const iframe = document.getElementById('techIframe');
+  if(iframe) iframe.src = 'about:blank';
+}
+
 function closeFocusMode(finished){
   clearInterval(focusTimerInterval);
   stopFocusPause();
+  closeTechDrawer();
   focusActive = false;
   document.body.classList.remove('focus-on');
   focusModeEl().classList.add('hidden');
@@ -2147,6 +2185,8 @@ function renderFocusSetView(){
   const skipBtn = document.getElementById('focusSkipExBtn');
   if(prevBtn) prevBtn.disabled = focusExIdx === 0 && focusSetIdx === 0;
   if(skipBtn) skipBtn.disabled = focusExIdx >= exercises.length - 1;
+
+  updateTechDrawer(ex);
 }
 
 function renderFocusAllSets(ex, row, unit, hist){
@@ -2307,6 +2347,21 @@ function setupFocusEvents(){
     focusSetIdx = 0;
     if(focusExIdx >= exercises.length) closeFocusMode(true);
     else renderFocusSetView();
+  });
+
+  const techBtn = document.getElementById('focusTechBtn');
+  if(techBtn) techBtn.addEventListener('click', () => {
+    if(focusTechOpen) closeTechDrawer();
+    else openTechDrawer();
+  });
+
+  document.getElementById('techDrawerClose')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeTechDrawer();
+  });
+
+  document.getElementById('techDrawerBar')?.addEventListener('click', (e) => {
+    if(!e.target.closest('#techDrawerClose')) closeTechDrawer();
   });
 }
 
