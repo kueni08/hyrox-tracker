@@ -85,6 +85,7 @@
           <div class="focus-ex-emoji" id="focusExEmoji">🏋️</div>
           <div class="focus-ex-name" id="focusExName"></div>
           <div class="focus-ex-note" id="focusExNote"></div>
+          <button id="focusTechBtn" class="focus-tech-btn hidden">🎬 Technik</button>
         </div>
         <!-- All sets rendered dynamically here -->
         <div id="focusSetsContainer" class="focus-sets-container"></div>
@@ -102,6 +103,21 @@
       <div id="focusExNav" class="focus-ex-nav hidden">
         <button id="focusPrevExBtn" class="focus-nav-ghost">◀ Vorherige</button>
         <button id="focusSkipExBtn" class="focus-nav-ghost">Überspringen</button>
+      </div>
+
+      <!-- Technique drawer — slides up over the focus overlay -->
+      <div id="techDrawer" class="tech-drawer">
+        <div class="tech-drawer-bar" id="techDrawerBar">
+          <div class="tech-pill"></div>
+          <span class="tech-bar-label" id="techBarLabel">Technik</span>
+          <button id="techDrawerClose" class="tech-close-btn">✕</button>
+        </div>
+        <div class="tech-drawer-body">
+          <a id="techOpenLink" class="tech-open-btn" href="#" target="_blank" rel="noopener noreferrer">Im Browser öffnen ↗</a>
+          <div class="tech-iframe-wrap">
+            <iframe id="techIframe" class="tech-iframe" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" src="about:blank" title="Technik"></iframe>
+          </div>
+        </div>
       </div>
     </section>
 
