@@ -335,8 +335,8 @@ function drawMuscleChart(){
 }
 
 const DEFAULT_WORKOUTS = {
-  version: 1,
-  order: ['A','B','HA','HB','HC','HV'],
+  version: 2,
+  order: ['A','B','HA','HB','HC','HV','HL','HZ'],
   map: {
     A: {
       id: 'A',
@@ -350,7 +350,8 @@ const DEFAULT_WORKOUTS = {
         {name:"Beinbeuger / Glute Drive", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
         {name:"Brustfliegende (Kabel/Maschine)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/butterfly-an-maschine/"},
         {name:"Rückenstrecker", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/rueckenstrecken-am-geraet/rueckenstrecken-an-der-rueckenstrecker-maschine/"},
-        {name:"Russian Twists (gesamt)", sets:2, reps:[20,20], technique:"https://modusx.de/fitness-uebungen/russian-twist/"}
+        {name:"Pallof Press Kabel", sets:2, reps:[12,12], technique:"", note:"Anti-Rotation | 2×12/Seite"},
+        {name:"Suitcase Carry", sets:3, reps:[1,1,1], technique:"", unit:"m", note:"30–40m pro Seite"}
       ]
     },
     B: {
@@ -365,7 +366,7 @@ const DEFAULT_WORKOUTS = {
         {name:"Kabelrudern (enger Griff)", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/kabelrudern/"},
         {name:"Schulterdrücken (Maschine/KH)", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/schulterdruecken/"},
         {name:"Seitheben (Kabel/KH)", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
-        {name:"Russian Twists (gesamt)", sets:2, reps:[20,20], technique:"https://modusx.de/fitness-uebungen/russian-twist/"}
+        {name:"Ab Wheel Rollout", sets:3, reps:[8,8,8], technique:"", note:"Anti-Extension"}
       ]
     },
     HA: {
@@ -379,7 +380,7 @@ const DEFAULT_WORKOUTS = {
         {name:"Seitheben sitzend", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/seitheben/"},
         {name:"Trizeps Pushdown Kabel", sets:2, reps:[10,10], technique:""},
         {name:"Dips Maschine", sets:2, reps:[8,8], technique:""},
-        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
+        {name:"Pallof Press Kabel", sets:2, reps:[12,12], technique:"", note:"Anti-Rotation | pro Seite"}
       ]
     },
     HB: {
@@ -388,13 +389,13 @@ const DEFAULT_WORKOUTS = {
       name: 'Upper B – Pull',
       exercises: [
         {name:"Lat Pulldown breiter Griff", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/latzug/"},
-        {name:"Rudern Maschine", sets:2, reps:[8,8], technique:""},
+        {name:"KH Rudern einarming", sets:3, reps:[8,8,8], technique:"", note:"Pro Seite | voller ROM"},
         {name:"Kabelrudern enger Griff", sets:2, reps:[8,8], technique:"https://modusx.de/fitness-uebungen/kabelrudern/"},
         {name:"Reverse Pec Deck", sets:2, reps:[10,10], technique:""},
         {name:"Face Pulls Kabel sitzend", sets:2, reps:[10,10], technique:""},
         {name:"Bizeps Curl SZ-Stange", sets:2, reps:[8,8], technique:""},
         {name:"Hammer Curl sitzend", sets:2, reps:[10,10], technique:""},
-        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
+        {name:"Side Plank", sets:2, reps:[30,30], technique:"", note:"Sekunden pro Seite | optional Reach"}
       ]
     },
     HC: {
@@ -403,13 +404,15 @@ const DEFAULT_WORKOUTS = {
       name: 'Lower – Maschinen',
       exercises: [
         {name:"Hip Thrust Maschine", sets:3, reps:[6,6,6], technique:"https://modusx.de/fitness-uebungen/hip-thrust/"},
+        {name:"Walking Lunges KH", sets:3, reps:[12,12,12], technique:"", note:"Pro Seite | HYROX-Transfer"},
         {name:"Beinstrecker Maschine", sets:2, reps:[8,8], technique:""},
         {name:"Beincurl liegend Maschine", sets:2, reps:[8,8], technique:""},
         {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:""},
         {name:"Adduktoren Maschine", sets:2, reps:[12,12], technique:""},
         {name:"Glute Kickback Kabel", sets:2, reps:[10,10], technique:""},
-        {name:"Beinstrecker einbeinig", sets:2, reps:[10,10], technique:""},
-        {name:"Cable Crunch kniend", sets:2, reps:[10,10], technique:""}
+        {name:"Ab Wheel Rollout", sets:2, reps:[8,8], technique:"", note:"Kontrolliert exzentrisch"},
+        {name:"Calf Raises stehend", sets:3, reps:[15,15,15], technique:"", note:"Voller ROM | langsam exzentrisch"},
+        {name:"Seated Calf Raise", sets:2, reps:[15,15], technique:"", note:"Knie gebeugt = Soleus"}
       ]
     },
     HV: {
@@ -420,6 +423,24 @@ const DEFAULT_WORKOUTS = {
         {name:"Skierg Aufwärmen", sets:1, reps:[5], technique:"", unit:"m"},
         {name:"Skierg 1min Intervall", sets:8, reps:[1,1,1,1,1,1,1,1], technique:"", unit:"m"},
         {name:"Skierg Cool-down", sets:1, reps:[5], technique:"", unit:"m"}
+      ]
+    },
+    HL: {
+      id: 'HL',
+      label: 'Lauf Intervall',
+      name: 'Lauf Intervall',
+      exercises: [
+        {name:"Aufwärmen Joggen", sets:1, reps:[10], technique:"", unit:"m", note:"10 min locker Z2"},
+        {name:"800m Intervall Z4", sets:6, reps:[1,1,1,1,1,1], technique:"", unit:"m", note:"2 min Pause zwischen Intervallen"},
+        {name:"Cool-down Gehen/Joggen", sets:1, reps:[10], technique:"", unit:"m", note:"10 min langsam auslaufen"}
+      ]
+    },
+    HZ: {
+      id: 'HZ',
+      label: 'Z2 Ausdauer',
+      name: 'Z2 Ausdauer',
+      exercises: [
+        {name:"Z2 Lauf oder Radfahren", sets:1, reps:[45], technique:"", unit:"m", note:"Puls 60–70% HRmax | Nasenluft möglich"}
       ]
     }
   }
@@ -512,8 +533,78 @@ let activeDetailState = null;
 
 function loadWorkoutsConfig(){
   const stored = getConfigRecord(WORKOUTS_CONFIG_KEY);
-  if(stored && stored.map){ return stored; }
+  if(stored && stored.map){ return migrateWorkouts(stored); }
   return DEFAULT_WORKOUTS;
+}
+
+function migrateWorkouts(state){
+  if(!state) return state;
+  let dirty = false;
+  const v = state.version || 0;
+
+  if(v < 2){
+    const replaceEx = (workout, oldName, newEx) => {
+      if(!workout?.exercises) return;
+      const i = workout.exercises.findIndex(e => e.name === oldName);
+      if(i !== -1){ workout.exercises[i] = newEx; dirty = true; }
+    };
+    const addAfter = (workout, afterName, newEx) => {
+      if(!workout?.exercises) return;
+      if(workout.exercises.some(e => e.name === newEx.name)) return;
+      const i = workout.exercises.findIndex(e => e.name === afterName);
+      workout.exercises.splice(i !== -1 ? i + 1 : workout.exercises.length, 0, newEx);
+      dirty = true;
+    };
+
+    // Training A: Russian Twists → Pallof Press + Suitcase Carry als Finisher
+    const A = state.map?.A;
+    replaceEx(A, 'Russian Twists (gesamt)', {name:'Pallof Press Kabel', sets:2, reps:[12,12], technique:'', note:'Anti-Rotation | 2×12/Seite'});
+    addAfter(A, 'Pallof Press Kabel', {name:'Suitcase Carry', sets:3, reps:[1,1,1], technique:'', unit:'m', note:'30–40m pro Seite'});
+
+    // Training B: Russian Twists → Ab Wheel Rollout
+    const B = state.map?.B;
+    replaceEx(B, 'Russian Twists (gesamt)', {name:'Ab Wheel Rollout', sets:3, reps:[8,8,8], technique:'', note:'Anti-Extension'});
+
+    // Upper A – Push: Cable Crunch → Pallof Press
+    const HA = state.map?.HA;
+    replaceEx(HA, 'Cable Crunch kniend', {name:'Pallof Press Kabel', sets:2, reps:[12,12], technique:'', note:'Anti-Rotation | pro Seite'});
+
+    // Upper B – Pull: Rudern Maschine → KH-Rudern; Cable Crunch → Side Plank
+    const HB = state.map?.HB;
+    replaceEx(HB, 'Rudern Maschine', {name:'KH Rudern einarming', sets:3, reps:[8,8,8], technique:'', note:'Pro Seite | voller ROM'});
+    replaceEx(HB, 'Cable Crunch kniend', {name:'Side Plank', sets:2, reps:[30,30], technique:'', note:'Sekunden pro Seite | optional Reach'});
+
+    // Lower: Beinstrecker einbeinig → Walking Lunges; Cable Crunch → Ab Wheel; + Calf Raises
+    const HC = state.map?.HC;
+    replaceEx(HC, 'Beinstrecker einbeinig', {name:'Walking Lunges KH', sets:3, reps:[12,12,12], technique:'', note:'Pro Seite | HYROX-Transfer'});
+    replaceEx(HC, 'Cable Crunch kniend', {name:'Ab Wheel Rollout', sets:2, reps:[8,8], technique:'', note:'Kontrolliert exzentrisch'});
+    addAfter(HC, 'Ab Wheel Rollout', {name:'Calf Raises stehend', sets:3, reps:[15,15,15], technique:'', note:'Voller ROM | langsam exzentrisch'});
+    addAfter(HC, 'Calf Raises stehend', {name:'Seated Calf Raise', sets:2, reps:[15,15], technique:'', note:'Knie gebeugt = Soleus'});
+
+    state.version = 2;
+    dirty = true;
+  }
+
+  // Neue Workouts hinzufügen falls fehlend
+  if(!state.map.HL){
+    state.map.HL = {id:'HL', label:'Lauf Intervall', name:'Lauf Intervall', color:'', exercises:[
+      {name:'Aufwärmen Joggen', sets:1, reps:[10], technique:'', unit:'m', note:'10 min locker Z2'},
+      {name:'800m Intervall Z4', sets:6, reps:[1,1,1,1,1,1], technique:'', unit:'m', note:'2 min Pause zwischen Intervallen'},
+      {name:'Cool-down Gehen/Joggen', sets:1, reps:[10], technique:'', unit:'m', note:'10 min langsam auslaufen'}
+    ]};
+    if(!state.order.includes('HL')) state.order.push('HL');
+    dirty = true;
+  }
+  if(!state.map.HZ){
+    state.map.HZ = {id:'HZ', label:'Z2 Ausdauer', name:'Z2 Ausdauer', color:'', exercises:[
+      {name:'Z2 Lauf oder Radfahren', sets:1, reps:[45], technique:'', unit:'m', note:'Puls 60–70% HRmax | Nasenluft'}
+    ]};
+    if(!state.order.includes('HZ')) state.order.push('HZ');
+    dirty = true;
+  }
+
+  if(dirty) setConfigRecord(WORKOUTS_CONFIG_KEY, state);
+  return state;
 }
 
 function normalizeWorkouts(raw){
