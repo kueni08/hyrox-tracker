@@ -447,7 +447,7 @@ const DEFAULT_WORKOUTS = {
       name: 'Nici – Ganzkörper | Hüfte & Rumpf',
       exercises: [
         {name:"Ischias-Nervengleiter (sitzend)", sets:1, reps:[8], technique:"https://www.southtees.nhs.uk/resources/sciatic-nerve-slider/", note:"Betroffene Seite | langsam gleiten, nicht dehnen | kein Schmerz und keine stärkere Taubheit | Dosierung mit Physio abstimmen"},
-        {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | neutraler, symptomfreier Bewegungsumfang | Rücken und Becken am Polster | beim Drücken ausatmen"},
+        {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | neutraler, symptomfreier Bewegungsumfang | Rücken und Becken am Polster | ausatmen | bei mehr Druck/Schwere heute Gewicht reduzieren oder 1 Satz streichen"},
         {name:"Rudern Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/rudern-sitzend-am-geraet/", note:"Brust abstützen | Becken ruhig | kontrolliert ziehen und ausatmen"},
         {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://www.puregym.com/exercises/glutes/hip-thrusts/barbell-hip-thrust/", note:"Gesäss und Hüftstreckung | Rippen unten | ausatmen | kein Hohlkreuz | bei Ausstrahlung stoppen"},
         {name:"Brustpresse Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/brustpresse/", note:"Rücken am Polster | beim Drücken ausatmen | Luft nicht anhalten"},
