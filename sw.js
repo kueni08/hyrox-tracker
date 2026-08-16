@@ -1,5 +1,5 @@
-// Simple PWA cache-first SW (v2)
-const CACHE = 'athletx-v2';
+// Simple PWA cache-first SW (v3)
+const CACHE = 'athletx-v3';
 const ASSETS = [
   './',
   './index.html',
