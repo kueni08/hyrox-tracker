@@ -66,6 +66,7 @@ const EXERCISE_LIBRARY = [
   "Hanging Leg Raises",
   "Ab Wheel Rollout",
   "Pallof Press",
+  "Fersenschieben in Rückenlage",
   "Russian Twists (gesamt)",
   "Plank Hold",
   "Side Plank",
@@ -138,13 +139,17 @@ const MUSCLE_GROUP_MAP = {
   "Beinstrecker einbeinig":             "Beine",
   "Abduktoren Maschine":                "Beine",
   "Adduktoren Maschine":                "Beine",
+  "Beinpresse":                         "Beine",
   "Bulgarian Split Squat (pro Bein)":   "Beine",
   "Beincurl liegend Maschine":          "Hamstrings",
+  "Leg Curl":                           "Hamstrings",
   "Beinbeuger / Glute Drive":           "Hamstrings",
   "Hip Thrust Maschine":                "Gesäss",
   "Glute Kickback Kabel":               "Gesäss",
   "Cable Crunch kniend":                "Bauch",
   "Russian Twists (gesamt)":            "Bauch",
+  "Pallof Press":                       "Bauch",
+  "Fersenschieben in Rückenlage":       "Bauch",
   "Skierg Aufwärmen":                   "Kondition",
   "Skierg 1min Intervall":              "Kondition",
   "Skierg Cool-down":                   "Kondition",
@@ -336,7 +341,7 @@ function drawMuscleChart(){
 
 const DEFAULT_WORKOUTS = {
   version: 2,
-  order: ['A','B','HA','HB','HC','HV','HL','HZ'],
+  order: ['A','B','NG','HA','HB','HC','HV','HL','HZ'],
   map: {
     A: {
       id: 'A',
@@ -433,6 +438,22 @@ const DEFAULT_WORKOUTS = {
         {name:"Aufwärmen Joggen", sets:1, reps:[10], technique:"", unit:"m", note:"10 min locker Z2"},
         {name:"800m Intervall Z4", sets:6, reps:[1,1,1,1,1,1], technique:"", unit:"m", note:"2 min Pause zwischen Intervallen"},
         {name:"Cool-down Gehen/Joggen", sets:1, reps:[10], technique:"", unit:"m", note:"10 min langsam auslaufen"}
+      ]
+    },
+    NG: {
+      id: 'NG',
+      label: 'Nici – Ganzkörper & Rumpf',
+      name: 'Nici – Ganzkörper & Rumpf',
+      exercises: [
+        {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | Rücken und Becken am Polster | ausatmen beim Drücken | bei Taubheit stoppen"},
+        {name:"Rudern Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/rudern-sitzend-am-geraet/", note:"Brust abstützen | kontrolliert ziehen | ausatmen"},
+        {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/hip-thrust/", note:"Rippen unten | ausatmen beim Hochdrücken | kein Hohlkreuz"},
+        {name:"Brustpresse Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/brustpresse/", note:"Rücken am Polster | ausatmen beim Drücken | nicht pressen"},
+        {name:"Leg Curl", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beincurls-maschine/beinbeuger-sitzend-am-beinbeuger-geraet/", note:"Langsam und kontrolliert | bei Taubheit stoppen"},
+        {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/abduktion-maschine/", note:"Rücken am Polster | ohne Schwung | kontrollierter Bewegungsumfang"},
+        {name:"Adduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/adduktion-geraet/adduktion-am-geraet-im-sitzen/", note:"Leicht beginnen | ausatmen | kein Pressen"},
+        {name:"Pallof Press", sets:2, reps:[8,8], technique:"https://www.puregym.com/exercises/abs/pallof-press/", note:"Sitzend | 8 pro Seite | Anti-Rotation | 2 Sekunden halten"},
+        {name:"Fersenschieben in Rückenlage", sets:2, reps:[6,6], technique:"https://www.plymouthhospitals.nhs.uk/display-pil/pil-lower-back-strengthening-exercises-4042/", note:"6 pro Seite | Becken stabil | ausatmen | Bauch nicht aufwölben"}
       ]
     },
     HZ: {
