@@ -447,7 +447,7 @@ const DEFAULT_WORKOUTS = {
       exercises: [
         {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | Rücken und Becken am Polster | ausatmen beim Drücken | bei Taubheit stoppen"},
         {name:"Rudern Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/rudern-sitzend-am-geraet/", note:"Brust abstützen | kontrolliert ziehen | ausatmen"},
-        {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/hip-thrust/", note:"Rippen unten | ausatmen beim Hochdrücken | kein Hohlkreuz"},
+        {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://www.puregym.com/exercises/glutes/hip-thrusts/barbell-hip-thrust/", note:"Rippen unten | ausatmen beim Hochdrücken | kein Hohlkreuz"},
         {name:"Brustpresse Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/brustpresse/", note:"Rücken am Polster | ausatmen beim Drücken | nicht pressen"},
         {name:"Leg Curl", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beincurls-maschine/beinbeuger-sitzend-am-beinbeuger-geraet/", note:"Langsam und kontrolliert | bei Taubheit stoppen"},
         {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/abduktion-maschine/", note:"Rücken am Polster | ohne Schwung | kontrollierter Bewegungsumfang"},
