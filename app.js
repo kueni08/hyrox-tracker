@@ -67,6 +67,7 @@ const EXERCISE_LIBRARY = [
   "Ab Wheel Rollout",
   "Pallof Press",
   "Fersenschieben in Rückenlage",
+  "Ischias-Nervengleiter (sitzend)",
   "Russian Twists (gesamt)",
   "Plank Hold",
   "Side Plank",
@@ -340,7 +341,7 @@ function drawMuscleChart(){
 }
 
 const DEFAULT_WORKOUTS = {
-  version: 2,
+  version: 3,
   order: ['A','B','NG','HA','HB','HC','HV','HL','HZ'],
   map: {
     A: {
@@ -442,18 +443,19 @@ const DEFAULT_WORKOUTS = {
     },
     NG: {
       id: 'NG',
-      label: 'Nici – Ganzkörper & Rumpf',
-      name: 'Nici – Ganzkörper & Rumpf',
+      label: 'Nici – Ganzkörper | Hüfte & Rumpf',
+      name: 'Nici – Ganzkörper | Hüfte & Rumpf',
       exercises: [
-        {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | Rücken und Becken am Polster | ausatmen beim Drücken | bei Taubheit stoppen"},
-        {name:"Rudern Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/rudern-sitzend-am-geraet/", note:"Brust abstützen | kontrolliert ziehen | ausatmen"},
-        {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://www.puregym.com/exercises/glutes/hip-thrusts/barbell-hip-thrust/", note:"Rippen unten | ausatmen beim Hochdrücken | kein Hohlkreuz"},
-        {name:"Brustpresse Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/brustpresse/", note:"Rücken am Polster | ausatmen beim Drücken | nicht pressen"},
-        {name:"Leg Curl", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beincurls-maschine/beinbeuger-sitzend-am-beinbeuger-geraet/", note:"Langsam und kontrolliert | bei Taubheit stoppen"},
-        {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/abduktion-maschine/", note:"Rücken am Polster | ohne Schwung | kontrollierter Bewegungsumfang"},
-        {name:"Adduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/adduktion-geraet/adduktion-am-geraet-im-sitzen/", note:"Leicht beginnen | ausatmen | kein Pressen"},
-        {name:"Pallof Press", sets:2, reps:[8,8], technique:"https://www.puregym.com/exercises/abs/pallof-press/", note:"Sitzend | 8 pro Seite | Anti-Rotation | 2 Sekunden halten"},
-        {name:"Fersenschieben in Rückenlage", sets:2, reps:[6,6], technique:"https://www.plymouthhospitals.nhs.uk/display-pil/pil-lower-back-strengthening-exercises-4042/", note:"6 pro Seite | Becken stabil | ausatmen | Bauch nicht aufwölben"}
+        {name:"Ischias-Nervengleiter (sitzend)", sets:1, reps:[8], technique:"https://www.southtees.nhs.uk/resources/sciatic-nerve-slider/", note:"Betroffene Seite | langsam gleiten, nicht dehnen | kein Schmerz und keine stärkere Taubheit | Dosierung mit Physio abstimmen"},
+        {name:"Beinpresse", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beinpresse-klassisch/", note:"RPE 5–6 | neutraler, symptomfreier Bewegungsumfang | Rücken und Becken am Polster | beim Drücken ausatmen"},
+        {name:"Rudern Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/rudern-sitzend-am-geraet/", note:"Brust abstützen | Becken ruhig | kontrolliert ziehen und ausatmen"},
+        {name:"Hip Thrust Maschine", sets:2, reps:[10,10], technique:"https://www.puregym.com/exercises/glutes/hip-thrusts/barbell-hip-thrust/", note:"Gesäss und Hüftstreckung | Rippen unten | ausatmen | kein Hohlkreuz | bei Ausstrahlung stoppen"},
+        {name:"Brustpresse Maschine", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/brustpresse/", note:"Rücken am Polster | beim Drücken ausatmen | Luft nicht anhalten"},
+        {name:"Leg Curl", sets:2, reps:[10,10], technique:"https://modusx.de/fitness-uebungen/beincurls-maschine/beinbeuger-sitzend-am-beinbeuger-geraet/", note:"Langsam | Bewegungsumfang verkürzen, falls Zug ins Gesäss/Bein entsteht | bei Taubheitszunahme stoppen"},
+        {name:"Abduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/abduktion-maschine/", note:"RPE 5–6 | Becken ruhig | ohne Schwung | keine Maximalversuche"},
+        {name:"Adduktoren Maschine", sets:2, reps:[12,12], technique:"https://modusx.de/fitness-uebungen/adduktion-geraet/adduktion-am-geraet-im-sitzen/", note:"RPE 5–6 | gezielte Hüft-/Beckenkontrolle, keine direkte Nervenentlastung | ausatmen | nicht pressen"},
+        {name:"Pallof Press", sets:2, reps:[8,8], technique:"https://www.puregym.com/exercises/abs/pallof-press/", note:"Sitzend | 8 pro Seite | Anti-Rotation | Beckenboden beim Ausatmen sanft mitnehmen | kein Doming"},
+        {name:"Fersenschieben in Rückenlage", sets:2, reps:[6,6], technique:"https://www.plymouthhospitals.nhs.uk/display-pil/pil-lower-back-strengthening-exercises-4042/", note:"6 pro Seite | Becken stabil | ausatmen | Bauch darf sich nicht aufwölben"}
       ]
     },
     HZ: {
@@ -606,6 +608,18 @@ function migrateWorkouts(state){
     dirty = true;
   }
 
+  if(v < 3){
+    // Aktualisiert den Nici-Plan auch bei bereits lokal/remote gespeicherter Konfiguration.
+    state.map = state.map || {};
+    state.map.NG = JSON.parse(JSON.stringify(DEFAULT_WORKOUTS.map.NG));
+    state.order = Array.isArray(state.order) ? state.order : [];
+    if(!state.order.includes('NG')){
+      state.order.splice(Math.min(2, state.order.length), 0, 'NG');
+    }
+    state.version = 3;
+    dirty = true;
+  }
+
   // Neue Workouts hinzufügen falls fehlend
   if(!state.map.HL){
     state.map.HL = {id:'HL', label:'Lauf Intervall', name:'Lauf Intervall', color:'', exercises:[
@@ -656,7 +670,7 @@ function normalizeWorkouts(raw){
   });
   Object.keys(base.map||{}).forEach(id=>{ appendWorkout(id, base.map[id]); });
   DEFAULT_WORKOUTS.order.forEach(id=>{ if(!seen.has(id)){ appendWorkout(id, DEFAULT_WORKOUTS.map[id]); } });
-  return { version:1, order: resultOrder, map: resultMap };
+  return { version:3, order: resultOrder, map: resultMap };
 }
 
 function normalizeExercises(arr){
@@ -750,7 +764,7 @@ function normalizeSets(sets, repsLen){
 }
 
 function serializeWorkouts(state){
-  const payload={ version:1, order:[], map:{} };
+  const payload={ version:3, order:[], map:{} };
   (state?.order||[]).forEach(id=>{
     const workout = state?.map?.[id];
     if(!workout) return;
